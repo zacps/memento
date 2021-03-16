@@ -4,29 +4,37 @@ MEMENTO is a Python library for running computationally expensive experiments.
 
 ## Developing
 
-Install dependencies:
+### Install dependencies
 
 ```
 $ pip install poetry
 $ poetry install
 ```
 
-To add dependencies:
+### Add dependencies
 
 ```
 $ poetry add (--dev) fancy_library
 ```
 
-To run tests:
+### Tests
 
 ```
 $ poetry run pytest
 ```
 
-To run linters:
+### Linters
 
 ```
-$ poetry run pytlint . && poetry run black .
+$ poetry run pylint memento tests && poetry run black .
+```
+
+### Run CI locally
+
+Install [act](https://github.com/nektos/act), then:
+
+```
+$ act
 ```
 
 ## Project Proposal Document
