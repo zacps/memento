@@ -1,0 +1,26 @@
+name: reviewer
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  assigner-reviewer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Assign reviewer
+        uses: actions/github-script@v3
+        continue-on-error: true
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            let reviewers = ["Dewera", "JamesLamberton", "Liam-Scott-Russell", "NeedsSoySauce", "watefeenex", "zacps"]
+              .filter(reviewer => reviewer !== context.issue.owner)
+
+            github.issues.addAssignees({
+              owner: context.repo.owner
+              repo: context.repo.repo
+              issue_number: context.issue.number
+              assignees: [reviewers[Math.floor(Math.random()*reviewers.length)]]
+            })
