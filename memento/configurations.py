@@ -8,10 +8,71 @@ import itertools
 def run(matrix: dict):
     """
     The main entry point of MEMENTO.
+
+    `matrix` describes the list of experiments you want MEMENTO to run. This must contain a key
+    `parameters` which is itself a dict, this describes each paramter you want to vary for your
+    experiments and their values.
+
+    As an example let's say you wanted to test a few simple linear classifiers on a number of
+    image recognition datasets. You might write something like this:
+
+    .. note::
+        Don't worry if you're not working on machine learning, this is just an example.
+
+    ```python
+    matrix = {
+        "parameters": {
+            "model": [
+                sklearn.svm.SVC,
+                sklearn.linear_model.Perceptron,
+                sklearn.linear_model.LogisticRegression
+            ],
+            "dataset": ["imagenet", "mnist", "cifar10", "quickdraw"]
+        }
+    }
+    ```
+
+    MEMENTO would then generate 12 configurations by taking the *cartesian product* of the
+    parameters.
+
+    ### Global Settings
+
+    Frequently you might also want to set some global configuration values, such as a regularization
+    parameter or potentially even change your preprocessing pipeline. In this case MEMENTO also
+    accepts a "settings" key. These settings apply to all experiments and can be accessed from the
+    configuration list as well as individual configurations.
+
+    ```python
+    matrix = {
+        "parameters": ...,
+        "settings": {
+            "regularization": 1e-1,
+            "preprocessing": make_preprocessing_pipeline()
+        }
+    }
+    ```
+
+    ### Excluding Combinations
+
+    You can also exclude specific parameter configurations. Returning to our machine learning
+    example, if you know SVCs perform poorly on cifar10 you might decide to skip that
+    experiment entirely. This is done with the "exclude" key:
+
+    ```python
+    matrix = {
+        "parameters": ...,
+        "exclude": [
+            {"model": sklearn.svm.SVC, "dataset": "cifar10"}
+        ]
+    }
+    ```
     """
 
     if not isinstance(matrix, dict):
-        raise ValueError(f"matrix must be a dict, got {type(matrix)}")
+        raise TypeError(f"matrix must be a dict, got {type(matrix)}")
+
+    if "parameters" not in matrix:
+        raise ValueError("matrix must contain a 'parameters' key")
 
     parameters = matrix["parameters"]
     settings = matrix.get("settings", {})
@@ -58,7 +119,7 @@ class Configurations:
 
 class Config:
     """
-    A single experiment configuration. Parameters are set as read-only attributes.
+    A single experiment configuration. Parameters are set as attributes.
 
     Global settings can also be accessed via `config.settings`.
     """
