@@ -80,7 +80,7 @@ class Config:
         return self._dict
 
 
-class _Never: # pylint: disable=R0903
+class _Never:  # pylint: disable=R0903
     """
     Type used for hackish equality test (it should always fail, as this should never be
     constructed).
