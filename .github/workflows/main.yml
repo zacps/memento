@@ -40,7 +40,7 @@ jobs:
         
     - name: Pylint
       run: |
-        poetry run pylint memento tests
+        poetry run pylint memento
 
   test:
     strategy:
