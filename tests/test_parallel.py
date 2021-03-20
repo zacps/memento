@@ -49,7 +49,7 @@ class CallableTestClass:
 def recursive_function(x: int):
     if x <= 0:
         return 0
-    return 1 + recursive_function(x-1)
+    return 1 + recursive_function(x - 1)
 
 
 @pytest.mark.parametrize(
