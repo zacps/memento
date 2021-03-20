@@ -29,11 +29,14 @@ def test_parallel_uses_correct_number_of_processes():
     assert len(set(results)) == 5
 
 
-@pytest.mark.parametrize("task,expected", [
-    (delayed(sum)([1, 2]), [3]),
-    (delayed(lambda x: sum(x))([2, 2]), [4]),
-    (delayed(functools.partial(lambda x, y: sum([x, y]), 2))(3), [5]),
-])
+@pytest.mark.parametrize(
+    "task,expected",
+    [
+        (delayed(sum)([1, 2]), [3]),
+        (delayed(lambda x: sum(x))([2, 2]), [4]),
+        (delayed(functools.partial(lambda x, y: sum([x, y]), 2))(3), [5]),
+    ],
+)
 def test_parallel_returns_correct_result(task: Callable, expected: List):
     """ The correct result is returned when tasks are run. """
     manager = TaskManager()
