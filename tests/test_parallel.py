@@ -3,7 +3,7 @@ Contains tests for parallel.py.
 """
 
 import functools
-import os
+import multiprocessing
 from typing import List, Callable
 
 import pytest
@@ -11,10 +11,14 @@ import pytest
 from memento.parallel import TaskManager, delayed
 
 
+def get_process_id():
+    return id(multiprocessing.current_process())
+
+
 def test_parallel_uses_multiple_processes():
     """ Multiple processes are used when running tasks. """
     manager = TaskManager(max_tasks_per_worker=1)
-    manager.add_tasks((delayed(os.getpid)() for _ in range(10)))
+    manager.add_tasks((delayed(get_process_id)() for _ in range(10)))
     results = manager.run()
 
     assert len(set(results)) == len(results)
@@ -23,7 +27,7 @@ def test_parallel_uses_multiple_processes():
 def test_parallel_uses_correct_number_of_processes():
     """ Multiple processes are used up to the specified limit when possible. """
     manager = TaskManager(max_tasks_per_worker=2, workers=5)
-    manager.add_tasks((delayed(os.getpid)() for _ in range(10)))
+    manager.add_tasks((delayed(get_process_id)() for _ in range(10)))
     results = manager.run()
 
     assert len(set(results)) == 5
