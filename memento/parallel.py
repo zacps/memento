@@ -3,6 +3,7 @@ Contains classes and functions for running tasks in parallel.
 """
 import sys
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
+from functools import wraps
 from multiprocessing.pool import Pool
 from typing import Callable, List, TextIO, Iterable
 
@@ -21,6 +22,7 @@ def delayed(func: Callable):
     """
 
     def args_wrapper(*args, **kwargs):
+        @wraps(func)
         def wrapped():
             return func(*args, **kwargs)
 
