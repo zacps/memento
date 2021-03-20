@@ -50,7 +50,7 @@ class _PrefixedStream:
         """ Writes the given text with a prefix. """
         text = text.rstrip()
         if text:
-            self._stream.write(f'{self._prefix}{text}\n')
+            self._stream.write(f"{self._prefix}{text}\n")
 
     def flush(self):
         """ Flushes the stream. """
@@ -72,9 +72,9 @@ class _Task:
         return dill.loads(self._task)()
 
 
-def _worker(task: '_Task'):
+def _worker(task: "_Task"):
     """ Initializer function for pool.map. """
-    with _redirect_stdio(f'{task.identifier}: '):
+    with _redirect_stdio(f"{task.identifier}: "):
         return task.run()
 
 
@@ -106,13 +106,15 @@ class TaskManager:
 
     def _create_task(self, callable_: Callable) -> _Task:
         self._id_count += 1
-        return _Task(f'Task {self._id_count}', callable_)
+        return _Task(f"Task {self._id_count}", callable_)
 
     def add_task(self, callable_: Callable):
         """ Adds the given task to the end of this task manager's queue. """
 
         if not callable(callable_):
-            raise TypeError(f"'callable' must of type 'Callable' but was '{type(callable_)}'")
+            raise TypeError(
+                f"'callable' must of type 'Callable' but was '{type(callable_)}'"
+            )
 
         task = self._create_task(callable_)
         self._tasks.append(task)
@@ -124,7 +126,9 @@ class TaskManager:
 
     def run(self):
         """ Runs this task manager's tasks and returns the results. """
-        with Pool(processes=self._workers, maxtasksperchild=self._max_tasks_per_worker) as pool:
+        with Pool(
+            processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
+        ) as pool:
             results = pool.map(_worker, self._tasks)
         self._tasks.clear()
         return results
