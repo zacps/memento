@@ -4,6 +4,7 @@ Contains classes and functions for running tasks in parallel.
 import sys
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 from functools import wraps
+from heapq import heapify
 from multiprocessing.pool import Pool
 from typing import Callable, List, TextIO, Iterable
 
@@ -60,9 +61,10 @@ class _PrefixedStream:
 
 
 class _Task:
-    def __init__(self, identifier: str, task: Callable):
+    def __init__(self, identifier: str, task: Callable, priority: int):
         self._identifier = identifier
         self._task = dill.dumps(task)
+        self._priority = priority
 
     @property
     def identifier(self):
@@ -73,11 +75,20 @@ class _Task:
         """ Runs this task and returns it's result. """
         return dill.loads(self._task)()
 
+    def __lt__(self, other: "_Task"):
+        """ Compares the priority between two tasks """
+        return self._priority < other._priority
+
 
 def _worker(task: "_Task"):
     """ Initializer function for pool.map. """
     with _redirect_stdio(f"{task.identifier}: "):
         return task.run()
+
+
+TASK_PRIORITY_LOW: int = 3
+TASK_PRIORITY_MEDIUM: int = 2
+TASK_PRIORITY_HIGH: int = 1
 
 
 class TaskManager:
@@ -104,13 +115,13 @@ class TaskManager:
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
-        self._tasks: List[_Task] = []
+        self._tasks: List[(int, _Task)] = []
 
-    def _create_task(self, callable_: Callable) -> _Task:
+    def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
-        return _Task(f"Task {self._id_count}", callable_)
+        return _Task(f"Task {self._id_count}", callable_, priority_)
 
-    def add_task(self, callable_: Callable):
+    def add_task(self, callable_: Callable, priority: int = TASK_PRIORITY_HIGH):
         """ Adds the given task to the end of this task manager's queue. """
 
         if not callable(callable_):
@@ -118,16 +129,22 @@ class TaskManager:
                 f"'callable' must of type 'Callable' but was '{type(callable_)}'"
             )
 
-        task = self._create_task(callable_)
+        if priority < 0:
+            raise ValueError(f"'priority' must be positive but was '{priority}'")
+
+        task = self._create_task(callable_, priority)
         self._tasks.append(task)
 
-    def add_tasks(self, callables: Iterable[Callable]):
+    def add_tasks(
+        self, callables: Iterable[Callable], priority: int = TASK_PRIORITY_HIGH
+    ):
         """ Adds the given tasks to the end of this task manager's queue. """
         for callable_ in callables:
-            self.add_task(callable_)
+            self.add_task(callable_, priority)
 
     def run(self):
         """ Runs this task manager's tasks and returns the results. """
+        heapify(self._tasks)
         with Pool(
             processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
         ) as pool:
