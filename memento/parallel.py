@@ -9,6 +9,8 @@ from typing import Callable, List, TextIO, Iterable
 
 import dill
 
+dill.settings["recurse"] = True
+
 
 def delayed(func: Callable):
     """
