@@ -35,9 +35,6 @@ def run(matrix: dict):
     MEMENTO would then generate 12 configurations by taking the *cartesian product* of the
     parameters.
 
-    Global Settings
-    ---------------
-
     Frequently you might also want to set some global configuration values, such as a regularization
     parameter or potentially even change your preprocessing pipeline. In this case MEMENTO also
     accepts a "settings" key. These settings apply to all experiments and can be accessed from the
@@ -52,9 +49,6 @@ def run(matrix: dict):
                 "preprocessing": make_preprocessing_pipeline()
             }
         }
-
-    Excluding Combinations
-    ----------------------
 
     You can also exclude specific parameter configurations. Returning to our machine learning
     example, if you know SVCs perform poorly on cifar10 you might decide to skip that
