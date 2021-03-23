@@ -100,6 +100,16 @@ jobs:
         path: ~/.cache/pypoetry/virtualenvs
         key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
 
+    - name: Sphinx apidoc
+      run: |
+        poetry run sphinx-apidoc -o docs memento -f
+
     - name: Sphinx
       run: |
         poetry run sphinx-build -W -b html docs docs/_build
+
+    - name: Archive docs
+      uses: actions/upload-artifact@v2
+      with:
+        name: docs
+        path: docs/_build
