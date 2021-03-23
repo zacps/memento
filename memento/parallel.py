@@ -2,12 +2,17 @@
 Contains classes and functions for running tasks in parallel.
 """
 import sys
+from ctypes import c_bool
+from multiprocessing import Process, Queue, cpu_count, current_process, Value
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 from functools import wraps
-from multiprocessing.pool import Pool
-from typing import Callable, List, TextIO, Iterable
+from queue import Empty
+from typing import Callable, List, TextIO, Iterable, Tuple, Dict
 
 import dill
+
+
+_SENTINEL = "STOP"
 
 
 def delayed(func: Callable):
@@ -72,10 +77,139 @@ class _Task:
         return dill.loads(self._task)()
 
 
-def _worker(task: "_Task"):
-    """ Initializer function for pool.map. """
+def _task_runner(task: _Task):
+    """ Worker function for _Pool.map used by TaskManager. """
     with _redirect_stdio(f"{task.identifier}: "):
-        return task.run()
+        result = task.run()
+        return result
+
+
+def _worker(tasks: Queue, results: Queue, worker_queue: Queue, max_tasks: int):
+    """ Initializer for _Pool worker processes. """
+    tasks_complete = 0
+    for func, arg in iter(tasks.get, _SENTINEL):
+        results.put(func(arg))
+
+        tasks_complete += 1
+        if max_tasks > 0 and tasks_complete >= max_tasks:
+            worker_queue.put(current_process().pid)
+            break
+
+
+def _process_manager(
+    tasks: Queue,
+    results: Queue,
+    exit_flag: Value,
+    workers: int = None,
+    max_tasks_per_worker: int = None,
+):
+    """ Initializer for ProcessManager. """
+    _Pool.ProcessManager(tasks, results, exit_flag, workers, max_tasks_per_worker)
+
+
+class _Pool:
+    class ProcessManager:
+        def __init__(
+            self,
+            tasks: Queue,
+            results: Queue,
+            exit_flag: Value,
+            workers: int = None,
+            max_tasks_per_worker: int = None,
+        ):
+            self._workers = workers or cpu_count()
+            self._max_tasks_per_worker = max_tasks_per_worker or 0
+            self._worker_queue = Queue()
+            self._exit_flag = exit_flag
+            self._worker_processes: Dict[int, Process] = dict()
+            self._tasks = tasks
+            self._results = results
+            self._start_workers()
+            self._run()
+
+        def _start_workers(self):
+            processes = [
+                Process(
+                    target=_worker,
+                    args=(
+                        self._tasks,
+                        self._results,
+                        self._worker_queue,
+                        self._max_tasks_per_worker,
+                    ),
+                )
+                for _ in range(self._workers)
+            ]
+
+            for process in processes:
+                process.start()
+                self._worker_processes[process.pid] = process
+
+        def _run(self):
+            # TODO: remove busy loop
+            while not self._exit_flag.value:
+                try:
+                    pid = self._worker_queue.get_nowait()
+                except Empty:
+                    continue
+
+                del self._worker_processes[pid]
+
+                process = Process(
+                    target=_worker,
+                    args=(
+                        self._tasks,
+                        self._results,
+                        self._worker_queue,
+                        self._max_tasks_per_worker,
+                    ),
+                )
+                process.start()
+                self._worker_processes[process.pid] = process
+
+            self._exit()
+
+        def _exit(self):
+            for _ in range(self._workers):
+                self._tasks.put(_SENTINEL)
+
+            for process in self._worker_processes.values():
+                process.join()
+
+    def __init__(self, workers: int = None, max_tasks_per_worker: int = None):
+        self._tasks = Queue()
+        self._results = Queue()
+        self._exit_flag = Value(c_bool, False)
+        self._process_manager = Process(
+            target=_process_manager,
+            args=(
+                self._tasks,
+                self._results,
+                self._exit_flag,
+                workers,
+                max_tasks_per_worker,
+            ),
+        )
+        self._process_manager.start()
+
+    def map(self, func: Callable, args: Iterable) -> List:
+        number_of_tasks = 0
+        for arg in args:
+            self._tasks.put((func, arg))
+            number_of_tasks += 1
+
+        # TODO: Return results in sorted order?
+        return [self._results.get() for _ in range(number_of_tasks)]
+
+    def close(self):
+        self._exit_flag.value = True
+        self._process_manager.join()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
 class TaskManager:
@@ -126,9 +260,9 @@ class TaskManager:
 
     def run(self):
         """ Runs this task manager's tasks and returns the results. """
-        with Pool(
-            processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
+        with _Pool(
+            workers=self._workers, max_tasks_per_worker=self._max_tasks_per_worker
         ) as pool:
-            results = pool.map(_worker, self._tasks)
+            results = pool.map(_task_runner, self._tasks)
         self._tasks.clear()
         return results
