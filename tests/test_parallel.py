@@ -31,7 +31,7 @@ def test_parallel_uses_multiple_processes():
 
 
 # The current method used to spawn processes doesn't give precise control over how many are spawned
-# so this test has been (for now)
+# so this test has been skipped (for now)
 @pytest.mark.skip
 def test_parallel_uses_correct_number_of_processes():
     """ Multiple processes are used up to the specified limit when possible. """
