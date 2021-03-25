@@ -72,6 +72,7 @@ class MemoryCacheProvider(CacheProvider):
     """
     An in-memory cache provider. Uses a dictionary for underlying storage.
     """
+
     def __init__(self, initial_cache: dict = None):
         """
         Creates a cache provider that uses memory for caching.
@@ -100,6 +101,7 @@ class Cache:
     """
     A higher order function that caches another, underlying function.
     """
+
     def __init__(self, func: Callable, cache_provider: CacheProvider = None):
         """
         Create the Cache object.

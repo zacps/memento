@@ -74,7 +74,12 @@ class TestMemoryCacheProvider:
             return args
 
         arguments = ("test1", "test2", 123, True)
-        keyword_arguments = {"key1": "value1", "key2": "value2", "key3": 321, "key4": False}
+        keyword_arguments = {
+            "key1": "value1",
+            "key2": "value2",
+            "key3": 321,
+            "key4": False,
+        }
         expected = dill.dumps(
             {
                 "function": function,
