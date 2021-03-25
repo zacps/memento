@@ -61,9 +61,9 @@ class Cache:
     def __call__(self, *args, **kwargs):
         key = self.cache_provider.make_key(self, self.func, *args, **kwargs)
 
-        if key in self.cache_provider:
-            return self.cache_provider[key]
+        if self.cache_provider.contains(key):
+            return self.cache_provider.get(key)
         else:
             value = self.func(*args, **kwargs)  # execute the function, with arguments
-            self.cache_provider[key] = value
+            self.cache_provider.set(key, value)
             return value
