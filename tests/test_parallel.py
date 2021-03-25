@@ -4,11 +4,17 @@ Contains tests for parallel.py.
 
 import functools
 import multiprocessing
-from typing import List, Callable
+import os
+from typing import List, Callable, TextIO
+import time
 
 import pytest
 
 from memento.parallel import TaskManager, delayed
+
+
+BASE_PATH = os.path.abspath(os.path.dirname(__file__))
+INPUT_PATH = os.path.join(BASE_PATH, "data", "hello_world.txt")
 
 
 def get_process_id():
@@ -33,15 +39,18 @@ def test_parallel_uses_correct_number_of_processes():
     assert len(set(results)) <= 5
 
 
-class TestClass:
+class DummyClass:
     def __init__(self, x: int, y: int):
         self._result = x + y
 
+    def calculate(self):
+        return self._result
+
     def __eq__(self, other):
-        return isinstance(other, TestClass) and self._result == other._result
+        return isinstance(other, DummyClass) and self._result == other._result
 
 
-class CallableTestClass:
+class CallableDummyClass:
     def __call__(self, x: int, y: int):
         return x + y
 
@@ -52,15 +61,28 @@ def recursive_function(x: int):
     return 1 + recursive_function(x - 1)
 
 
+def function_with_dependencies(x: int, y: int):
+    time.sleep(1)
+    return x + y
+
+
+def function_referencing_locals(x: int, y: int):
+    return function_with_dependencies(x, y)
+
+
 @pytest.mark.parametrize(
     "task,expected",
     [
         (delayed(sum)([1, 2]), [3]),
         (delayed(lambda x: sum(x))([2, 2]), [4]),
         (delayed(functools.partial(lambda x, y: sum([x, y]), 2))(3), [5]),
-        (delayed(TestClass)(3, 3), [TestClass(3, 3)]),
-        (delayed(CallableTestClass())(3, 4), [7]),
+        (delayed(DummyClass)(3, 3), [DummyClass(3, 3)]),
+        (delayed(DummyClass(3, 3).calculate)(), [6]),
+        (delayed(CallableDummyClass())(3, 4), [7]),
         (delayed(recursive_function)(8), [8]),
+        (delayed(function_with_dependencies)(4, 5), [9]),
+        (delayed(function_referencing_locals)(5, 5), [10]),
+        (delayed(list)(range(5)), [[0, 1, 2, 3, 4]]),
     ],
 )
 def test_parallel_returns_correct_result(task: Callable, expected: List):
@@ -70,3 +92,17 @@ def test_parallel_returns_correct_result(task: Callable, expected: List):
     results = manager.run()
 
     assert results == expected
+
+
+def read_file(file: TextIO):
+    return file.readlines()
+
+
+def test_parallel_with_file():
+    manager = TaskManager()
+
+    with open(INPUT_PATH) as f:
+        manager.add_task(delayed(read_file)(f))
+
+    results = manager.run()
+    assert results == [["Hello World!\n"]]
