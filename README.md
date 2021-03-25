@@ -26,7 +26,7 @@ $ poetry run pytest
 ### Linters
 
 ```
-$ poetry run pylint memento tests && poetry run black .
+$ poetry run pylint memento && poetry run black .
 ```
 
 ### Run CI locally
