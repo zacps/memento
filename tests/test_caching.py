@@ -1,73 +1,44 @@
 from typing import Callable
-from unittest import mock
+from unittest.mock import Mock
 
 import dill
 
 from memento.caching import Cache, MemoryCacheProvider, CacheProvider
 
 
-class MockCacheProvider(CacheProvider):
-    def get(self, key):
-        pass
-
-    def set(self, key, item):
-        pass
-
-    def contains(self, key):
-        pass
-
-    def make_key(self, func: Callable, *args, **kwargs) -> str:
-        pass
-
-
 class TestCache:
     def test_cache_calls_underlying_function_when_not_in_cache(self):
-        underlying_func = mock.MagicMock()
-        provider = MockCacheProvider()
-        provider.make_key = mock.MagicMock(
-            return_value="not-in-cache"
-        )  # can't pickle a MagicMock
-        provider.contains = mock.MagicMock(return_value=False)
+        underlying_func = Mock()
+        cache_provider = Mock(spec_set=CacheProvider)
+        cache_provider.contains.return_value = False
 
-        cached = Cache(underlying_func, provider)
+        cached = Cache(underlying_func, cache_provider)
         cached({"key1": "value1"})
         underlying_func.assert_called_with({"key1": "value1"})
 
     def test_cache_does_not_execute_already_cached_function(self):
-        underlying_func = mock.MagicMock()
-        cache_key = "cache-key"
-        cached_result = "result"
-        provider = MockCacheProvider()
-
-        provider.make_key = mock.MagicMock(
-            return_value=cache_key
-        )  # can't pickle a MagicMock
-        provider.contains = mock.MagicMock(return_value=True)
-        provider.get = mock.MagicMock(return_value=cached_result)
-        cached_function = Cache(underlying_func, cache_provider=provider)
-
-        resp = cached_function("test")
-
-        provider.contains.assert_called_with(cache_key)
-        provider.get.assert_called_with(cache_key)
-        underlying_func.assert_not_called()
-        assert resp == cached_result
-
-    def test_cache_saves_function_result_if_not_in_cache(self):
-        result = "result"
-        underlying_func = mock.MagicMock(return_value=result)
-        provider = MockCacheProvider()
-        cache_key = "not_in_cache"
-
-        provider.make_key = mock.MagicMock(
-            return_value=cache_key
-        )  # can't pickle a MagicMock
-        provider.set = mock.MagicMock()
-        cached_function = Cache(underlying_func, cache_provider=provider)
+        underlying_func = Mock()
+        cache_provider = Mock(spec_set=CacheProvider)
+        cache_provider.contains.return_value = True
+        cached_function = Cache(underlying_func, cache_provider=cache_provider)
 
         cached_function()
 
-        provider.set.assert_called_once_with(cache_key, result)
+        underlying_func.assert_not_called()
+
+    def test_cache_saves_function_result_if_not_in_cache(self):
+        result = "result"
+        cache_key = "not_in_cache"
+        underlying_func = Mock(return_value=result)
+        cache_provider = Mock(spec_set=CacheProvider)
+        cache_provider.make_key.return_value = cache_key
+        cache_provider.contains.return_value = False
+
+        cached_function = Cache(underlying_func, cache_provider=cache_provider)
+
+        cached_function()
+
+        cache_provider.set.assert_called_once_with(cache_key, result)
 
     def test_cache_creates_memory_cache_provider_by_default(self):
         cache = Cache(lambda x: x + 1)
