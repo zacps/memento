@@ -1,9 +1,9 @@
 """
 Contains classes for implementing caching of functions.
 """
-import dill
-from typing import Callable
 from abc import ABC, abstractmethod
+from typing import Callable
+import dill
 
 
 class CacheProvider(ABC):
@@ -36,7 +36,6 @@ class CacheProvider(ABC):
         :param key: Used to get the item from the cache.
         :returns: The item in the cache, if it exists.
         """
-        pass
 
     @abstractmethod
     def set(self, key: str, item) -> None:
@@ -47,7 +46,6 @@ class CacheProvider(ABC):
         :param item: The item to be cached.
         :returns: Nothing.
         """
-        pass
 
     @abstractmethod
     def contains(self, key: str) -> bool:
@@ -57,7 +55,6 @@ class CacheProvider(ABC):
         :param key: The key to check.
         :returns: True if it exists, False otherwise.
         """
-        pass
 
     @abstractmethod
     def make_key(self, func: Callable, *args, **kwargs) -> str:
@@ -69,10 +66,12 @@ class CacheProvider(ABC):
         :param kwargs: Keyword arguments to the function to be cached.
         :returns: True if it exists, False otherwise.
         """
-        pass
 
 
 class MemoryCacheProvider(CacheProvider):
+    """
+    An in-memory cache provider. Uses a dictionary for underlying storage.
+    """
     def __init__(self, initial_cache: dict = None):
         """
         Creates a cache provider that uses memory for caching.
@@ -98,9 +97,12 @@ class MemoryCacheProvider(CacheProvider):
 
 
 class Cache:
+    """
+    A higher order function that caches another, underlying function.
+    """
     def __init__(self, func: Callable, cache_provider: CacheProvider = None):
         """
-        A higher order function that caches another function.
+        Create the Cache object.
 
         Usage can be one of the following:
         ``
@@ -129,7 +131,10 @@ class Cache:
         @Cache
         def underlying_func:
             pass
+        cached_func = Cache(underlying_func)
+
         underlying_func()
+        cached_func
         ``
 
         :param args: Arguments to the underlying function.
@@ -140,7 +145,15 @@ class Cache:
 
         if self.cache_provider.contains(key):
             return self.cache_provider.get(key)
-        else:
-            value = self.func(*args, **kwargs)  # execute the function, with arguments
-            self.cache_provider.set(key, value)
-            return value
+
+        value = self.func(*args, **kwargs)  # execute the function, with arguments
+        self.cache_provider.set(key, value)
+        return value
+
+    def __str__(self):
+        """
+        Creates a human-readable string of the cache and cached function.
+
+        :return: A string representing the cached function.
+        """
+        return f"Cached function object: func: {self.func}, cache: {str(self.cache_provider.cache)}"

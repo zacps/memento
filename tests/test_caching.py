@@ -70,20 +70,20 @@ class TestMemoryCacheProvider:
         assert provider.cache == initial_cache
 
     def test_memory_cache_provider_creates_correct_keys(self):
-        def function(x):
-            return x
+        def function(*args):
+            return args
 
-        args = ("test1", "test2", 123, True)
-        kwargs = {"key1": "value1", "key2": "value2", "key3": 321, "key4": False}
+        arguments = ("test1", "test2", 123, True)
+        keyword_arguments = {"key1": "value1", "key2": "value2", "key3": 321, "key4": False}
         expected = dill.dumps(
             {
                 "function": function,
-                "args": args,
-                "kwargs": kwargs,
+                "args": arguments,
+                "kwargs": keyword_arguments,
             }
         )
 
         provider = MemoryCacheProvider()
-        actual = provider.make_key(function, *args, **kwargs)
+        actual = provider.make_key(function, *arguments, **keyword_arguments)
 
         assert expected == actual
