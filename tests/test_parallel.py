@@ -73,6 +73,12 @@ def function_referencing_locals(x: int, y: int):
     return function_with_dependencies(x, y)
 
 
+def function_with_local_import(x: int, y: int):
+    import math
+
+    return math.floor(x + y)
+
+
 @pytest.mark.parametrize(
     "task,expected",
     [
@@ -85,6 +91,7 @@ def function_referencing_locals(x: int, y: int):
         (delayed(recursive_function)(8), [8]),
         (delayed(function_with_dependencies)(4, 5), [9]),
         (delayed(function_referencing_locals)(5, 5), [10]),
+        (delayed(function_with_local_import)(5, 6), [11]),
         (delayed(list)(range(5)), [[0, 1, 2, 3, 4]]),
     ],
 )
