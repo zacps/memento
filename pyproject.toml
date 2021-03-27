@@ -14,6 +14,7 @@ black = "^20.8b1"
 pylint = "^2.7.2"
 pytest = "^6.2.2"
 Sphinx = "^3.5.3"
+dill = "^0.3.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
