@@ -41,7 +41,7 @@ class TestCache:
 
     def test_cache_creates_memory_cache_provider_by_default(self):
         cache = Cache(lambda x: x + 1)
-        assert isinstance(cache.cache_provider, MemoryCacheProvider)
+        assert isinstance(cache._cache_provider, MemoryCacheProvider)
 
 
 class TestMemoryCacheProvider:
@@ -53,7 +53,7 @@ class TestMemoryCacheProvider:
     def test_memory_cache_provider_set_works(self):
         provider = MemoryCacheProvider()
         provider.set("key", "value")
-        assert provider.cache.get("key") == "value"
+        assert provider._cache.get("key") == "value"
 
     def test_memory_cache_provider_contains_works(self):
         provider = MemoryCacheProvider({"key": "value"})
@@ -62,12 +62,12 @@ class TestMemoryCacheProvider:
 
     def test_memory_cache_provider_creates_initial_empty_cache(self):
         provider = MemoryCacheProvider()
-        assert provider.cache == {}
+        assert provider._cache == {}
 
     def test_memory_cache_provider_creates_initial_cache_when_provided(self):
         initial_cache = {"key1": "value1", "key2": 123}
         provider = MemoryCacheProvider(initial_cache)
-        assert provider.cache == initial_cache
+        assert provider._cache == initial_cache
 
     def test_memory_cache_provider_creates_correct_keys(self):
         def function(*args):
