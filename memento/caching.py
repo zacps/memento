@@ -15,7 +15,7 @@ class CacheProvider(ABC):
     Must be used as the parent class of a cache provider class.
 
     ``
-    class CustomCacheProvider(CacheProvider):
+        class CustomCacheProvider(CacheProvider):
     ``
     """
 
@@ -27,6 +27,14 @@ class CacheProvider(ABC):
 
     def __contains__(self, key: str):
         return self.contains(key)
+
+    @abstractmethod
+    def __str__(self) -> str:
+        """
+        Creates a human-readable string of the cache.
+
+        :return: A string representing the cache.
+        """
 
     @abstractmethod
     def get(self, key: str):
@@ -79,19 +87,19 @@ class MemoryCacheProvider(CacheProvider):
 
         :param initial_cache: Optional initial cache, defaults to an empty dictionary.
         """
-        if initial_cache is None:
-            # Explicitly create dictionary here, as otherwise would be externally mutable
-            initial_cache = {}
-        self.cache = initial_cache
+        self._cache = initial_cache or {}
+
+    def __str__(self):
+        return str(self._cache)
 
     def get(self, key: str):
-        return self.cache.get(key)
+        return self._cache.get(key)
 
     def set(self, key: str, item) -> None:
-        self.cache[key] = item
+        self._cache[key] = item
 
     def contains(self, key: str) -> bool:
-        return self.cache.get(key, False) is not False
+        return self._cache.get(key, False) is not False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
         return dill.dumps({"function": func, "args": args, "kwargs": kwargs})
@@ -108,48 +116,48 @@ class Cache:
 
         Usage can be one of the following:
         ``
-        @Cache
-        def underlying_function():
-            pass
+            @Cache
+            def underlying_function():
+                pass
         ``
 
         ``
-        cached_function = Cache(underlying_function)
+            cached_function = Cache(underlying_function)
         ``
 
         :param func: The function to be cached.
         :param cache_provider: The cache provider, defaults to MemoryCacheProvider
         """
-        self.func = func
+        self._func = func
         if cache_provider is None:
             cache_provider = MemoryCacheProvider()
-        self.cache_provider = cache_provider
+        self._cache_provider = cache_provider
 
     def __call__(self, *args, **kwargs):
         """
         Method called when the cached function is called.
 
         ``
-        @Cache
-        def underlying_func:
-            pass
-        cached_func = Cache(underlying_func)
+            @Cache
+            def underlying_func:
+                pass
+            cached_func = Cache(underlying_func)
 
-        underlying_func()
-        cached_func
+            underlying_func()
+            cached_func
         ``
 
         :param args: Arguments to the underlying function.
         :param kwargs: Keyword arguments to the underlying function.
         :return: The (cached) result of the underlying function.
         """
-        key = self.cache_provider.make_key(self, self.func, *args, **kwargs)
+        key = self._cache_provider.make_key(self, self._func, *args, **kwargs)
 
-        if self.cache_provider.contains(key):
-            return self.cache_provider.get(key)
+        if self._cache_provider.contains(key):
+            return self._cache_provider.get(key)
 
-        value = self.func(*args, **kwargs)  # execute the function, with arguments
-        self.cache_provider.set(key, value)
+        value = self._func(*args, **kwargs)  # execute the function, with arguments
+        self._cache_provider.set(key, value)
         return value
 
     def __str__(self):
@@ -158,4 +166,4 @@ class Cache:
 
         :return: A string representing the cached function.
         """
-        return f"Cached function object: func: {self.func}, cache: {str(self.cache_provider.cache)}"
+        return f"Cached function object: func: {self._func}, cache: {str(self._cache_provider)}"
