@@ -43,6 +43,7 @@ class CacheProvider(ABC):
 
         :param key: Used to get the item from the cache.
         :returns: The item in the cache, if it exists.
+        :raise KeyError: When the key is not in the cache.
         """
 
     @abstractmethod
@@ -93,7 +94,7 @@ class MemoryCacheProvider(CacheProvider):
         return str(self._cache)
 
     def get(self, key: str):
-        return self._cache.get(key)
+        return self._cache[key]
 
     def set(self, key: str, item) -> None:
         self._cache[key] = item
@@ -153,12 +154,12 @@ class Cache:
         """
         key = self._cache_provider.make_key(self, self._func, *args, **kwargs)
 
-        if self._cache_provider.contains(key):
+        try:
             return self._cache_provider.get(key)
-
-        value = self._func(*args, **kwargs)  # execute the function, with arguments
-        self._cache_provider.set(key, value)
-        return value
+        except KeyError:
+            value = self._func(*args, **kwargs)  # execute the function, with arguments
+            self._cache_provider.set(key, value)
+            return value
 
     def __str__(self):
         """

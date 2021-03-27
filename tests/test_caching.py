@@ -1,7 +1,6 @@
 from unittest.mock import Mock
-
 import dill
-
+import pytest
 from memento.caching import Cache, MemoryCacheProvider, CacheProvider
 
 
@@ -9,7 +8,7 @@ class TestCache:
     def test_cache_calls_underlying_function_when_not_in_cache(self):
         underlying_func = Mock()
         cache_provider = Mock(spec_set=CacheProvider)
-        cache_provider.contains.return_value = False
+        cache_provider.get.side_effect = KeyError()
 
         cached = Cache(underlying_func, cache_provider)
         cached({"key1": "value1"})
@@ -31,7 +30,7 @@ class TestCache:
         underlying_func = Mock(return_value=result)
         cache_provider = Mock(spec_set=CacheProvider)
         cache_provider.make_key.return_value = cache_key
-        cache_provider.contains.return_value = False
+        cache_provider.get.side_effect = KeyError()
 
         cached_function = Cache(underlying_func, cache_provider=cache_provider)
 
@@ -92,3 +91,8 @@ class TestMemoryCacheProvider:
         actual = provider.make_key(function, *arguments, **keyword_arguments)
 
         assert expected == actual
+
+    def test_memory_cache_provider_raises_keyError_when_key_not_in_cache(self):
+        provider = MemoryCacheProvider()
+        with pytest.raises(KeyError) as error_info:
+            provider.get("not_in_cache")
