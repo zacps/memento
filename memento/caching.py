@@ -14,9 +14,8 @@ class CacheProvider(ABC):
 
     Must be used as the parent class of a cache provider class.
 
-    ``
+    ..
         class CustomCacheProvider(CacheProvider):
-    ``
     """
 
     def __getitem__(self, key: str):
@@ -116,15 +115,13 @@ class Cache:
         Create the Cache object.
 
         Usage can be one of the following:
-        ``
+
+        ..
             @Cache
             def underlying_function():
                 pass
-        ``
 
-        ``
             cached_function = Cache(underlying_function)
-        ``
 
         :param func: The function to be cached.
         :param cache_provider: The cache provider, defaults to MemoryCacheProvider
@@ -138,15 +135,14 @@ class Cache:
         """
         Method called when the cached function is called.
 
-        ``
+        ..
             @Cache
-            def underlying_func:
+            def underlying_func():
                 pass
             cached_func = Cache(underlying_func)
 
             underlying_func()
-            cached_func
-        ``
+            cached_func()
 
         :param args: Arguments to the underlying function.
         :param kwargs: Keyword arguments to the underlying function.
