@@ -3,7 +3,7 @@ Contains classes for implementing caching of functions.
 """
 from abc import ABC, abstractmethod
 from typing import Callable
-import dill
+import cloudpickle
 
 
 class CacheProvider(ABC):
@@ -103,7 +103,7 @@ class MemoryCacheProvider(CacheProvider):
         return self._cache.get(key, False) is not False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
-        return dill.dumps({"function": func, "args": args, "kwargs": kwargs})
+        return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
 
 
 class Cache:
