@@ -1,6 +1,6 @@
 from unittest.mock import Mock
-import dill
 import pytest
+import cloudpickle
 from memento.caching import Cache, MemoryCacheProvider, CacheProvider
 
 
@@ -79,7 +79,7 @@ class TestMemoryCacheProvider:
             "key3": 321,
             "key4": False,
         }
-        expected = dill.dumps(
+        expected = cloudpickle.dumps(
             {
                 "function": function,
                 "args": arguments,
