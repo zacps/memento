@@ -8,9 +8,7 @@ from heapq import heapify
 from multiprocessing.pool import Pool
 from typing import Callable, List, TextIO, Iterable
 
-import dill
-
-dill.settings["recurse"] = True
+import cloudpickle
 
 
 def delayed(func: Callable):
@@ -63,7 +61,7 @@ class _PrefixedStream:
 class _Task:
     def __init__(self, identifier: str, task: Callable, priority: int):
         self._identifier = identifier
-        self._task = dill.dumps(task)
+        self._task = cloudpickle.dumps(task)
         self._priority = priority
 
     @property
@@ -73,7 +71,7 @@ class _Task:
 
     def run(self):
         """ Runs this task and returns it's result. """
-        return dill.loads(self._task)()
+        return cloudpickle.loads(self._task)()
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
