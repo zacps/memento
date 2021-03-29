@@ -37,7 +37,7 @@ def _redirect_stdio(prefix: str):
     """
     Redirects stdout and stderr to a stream that adds the given prefix to any text that is output.
     """
-    # FIXME: `_PrefixedStream` does not satisfy the `_T_io` type parameter for `redirect_std*``
+    # TODO: `_PrefixedStream` does not satisfy the `_T_io` type parameter for `redirect_std*``
     with redirect_stdout(_PrefixedStream(sys.stdout, prefix)):  # type: ignore
         with redirect_stderr(_PrefixedStream(sys.stderr, prefix)):  # type: ignore
             yield
