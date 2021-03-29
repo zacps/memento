@@ -4,7 +4,8 @@ generated and dispatched to tasks, we need some way to interact
 with the user code
 """
 
-import configurations
+#import configurations
+#import parallel
 
 matrix = {}
 
@@ -21,7 +22,7 @@ def experiment(context, config):
 
     """
 
-    def task_input(text):
+    def task_input(text, model, dataset):
         """
         Takes the experiment and sends it to the tasks
         """
@@ -31,6 +32,13 @@ def experiment(context, config):
     def task_output():
         """
         The results after the test is finished
+        """
+
+        return NotImplementedError
+
+    def get_dataset(config):
+        """
+        Gets the data set from configurations
         """
 
         return NotImplementedError
@@ -50,18 +58,25 @@ def experiment(context, config):
 
         return NotImplementedError
 
+    def aggregate(list_of_results):
+        """
+        Combines all the results
+        """
+
+        return NotImplementedError
+
     model = config.model()
     dataset = get_dataset(config.dataset)
     results = []
     text = context
-    text_checkpoint = context.checkpoint()
+    checkpoint()
 
-    while not len(results) > 1:
+    while len(results) <= 1:
 
-        task_input(text)
+        task_input(text, model, dataset)
         results.append(task_output())
         text = collect_metrics()
-        text_checkpoint = checkpoint()
+        checkpoint()
 
     # raise NotImplementedError
 
