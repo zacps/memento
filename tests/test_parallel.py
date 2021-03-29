@@ -129,3 +129,16 @@ def test_parallel_with_file():
 
     results = manager.run()
     assert results == [["Hello World!\n"]]
+
+
+def test_parallel_order():
+    manager = TaskManager()
+
+    def identity(x):
+        return x
+
+    manager.add_tasks(delayed(identity)(x) for x in range(10))
+
+    results = manager.run()
+
+    assert results == list(range(10))
