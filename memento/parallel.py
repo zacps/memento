@@ -59,15 +59,21 @@ class _PrefixedStream:
 
 
 class _Task:
-    def __init__(self, identifier: str, task: Callable, priority: int):
+    def __init__(self, identifier: str, index: int, task: Callable, priority: int):
         self._identifier = identifier
         self._task = cloudpickle.dumps(task)
         self._priority = priority
+        self._index = index
 
     @property
     def identifier(self):
         """ Returns this job's identifier. """
         return self._identifier
+
+    @property
+    def index(self):
+        """ Returns this job's index. """
+        return self._index
 
     def run(self):
         """ Runs this task and returns it's result. """
@@ -81,7 +87,7 @@ class _Task:
 def _worker(task: "_Task"):
     """ Initializer function for pool.map. """
     with _redirect_stdio(f"{task.identifier}: "):
-        return task.run()
+        return task.index, task.run()
 
 
 TASK_PRIORITY_LOW: int = 3
@@ -114,10 +120,13 @@ class TaskManager:
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[(int, _Task)] = []
+        self._task_index = 0
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
-        return _Task(f"Task {self._id_count}", callable_, priority_)
+        task = _Task(f"Task {self._id_count}", self._task_index, callable_, priority_)
+        self._task_index += 1
+        return task
 
     def add_task(self, callable_: Callable, priority: int = TASK_PRIORITY_HIGH):
         """ Adds the given task to the end of this task manager's queue. """
@@ -148,4 +157,10 @@ class TaskManager:
         ) as pool:
             results = pool.map(_worker, self._tasks)
         self._tasks.clear()
+
+        # At this point results is a list of tuples -> (task_index, task_result) so we can sort
+
+        results.sort(key=lambda t: t[0])
+        results = [item[1] for item in results]
+
         return results
