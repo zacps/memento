@@ -4,83 +4,37 @@ generated and dispatched to tasks, we need some way to interact
 with the user code
 """
 
-# import configurations
-# import parallel
 
-matrix = {}
-
-
-def experiment(context, config):
+class Context:
     """
-    Running the base experiment for all experiments
+    Creates the context which interacts with the user
 
     ### Example
 
     ```python
-    results = experiment(context, config)
+    context_example = Context()
+    context_example.collect_metrics()
+    context_example.checkpoint()
     ```
-
     """
 
-    def task_input(text, model, dataset):
+    def __init__(self, context=None):
         """
-        Takes the experiment and sends it to the tasks
+        Initalizes the context
         """
+        self.context = context
 
-        return NotImplementedError
-
-    def task_output():
-        """
-        The results after the test is finished
-        """
-
-        return NotImplementedError
-
-    def get_dataset(config):
-        """
-        Gets the data set from configurations
-        """
-
-        return NotImplementedError
-
-    def collect_metrics():
+    def collect_metrics(self):
         """
         Gets the new metrics to start next experiment
         """
-
+        self.context.collect_metrics()
         return NotImplementedError
 
-    def checkpoint():
+    def checkpoint(self):
         """
         Allows the user to revert the directory to any point in
         the past that was ‘commit’ to save the changes.
         """
-
+        self.context.checkpoint()
         return NotImplementedError
-
-    def aggregate(list_of_results):
-        """
-        Combines all the results
-        """
-
-        return NotImplementedError
-
-    model = config.model()
-    dataset = get_dataset(config.dataset)
-    results = []
-    text = context
-    checkpoint()
-
-    while len(results) <= 1:
-
-        task_input(text, model, dataset)
-        results.append(task_output())
-        text = collect_metrics()
-        checkpoint()
-
-    # raise NotImplementedError
-
-    return aggregate(results)
-
-
-# memento.run(experiment, matrix)
