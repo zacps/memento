@@ -1,6 +1,7 @@
 """
 Contains classes for implementing caching of functions.
 """
+import os
 import sqlite3
 import tempfile
 from abc import ABC, abstractmethod
@@ -134,6 +135,15 @@ class FileSystemCacheProvider(CacheProvider):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._connection is not None:
             self._connection.close()
+
+    def __del__(self):
+        if self._connection is not None:
+            self._connection.close()
+        os.remove(self._filepath)  # remove the temp file
+
+    def __str__(self) -> str:
+        raise NotImplementedError()
+
 
     def get(self, key: str):
         with self as db:

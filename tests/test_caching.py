@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 import cloudpickle
 from memento.caching import Cache, MemoryCacheProvider, CacheProvider, FileSystemCacheProvider
+from memento.parallel import TaskManager, delayed
 
 
 class TestCache:
@@ -162,3 +163,24 @@ class TestFileSystemCacheProvider:
         provider = FileSystemCacheProvider(connection=connection)
         with pytest.raises(KeyError) as error_info:
             provider.get("not_in_cache")
+
+    def test_file_system_cache_provider_works_in_parallel(self):
+        underlying_func = Mock(return_value=2)
+        provider = MemoryCacheProvider()
+        cached_func = Cache(underlying_func, cache_provider=provider)
+        manager = TaskManager()
+        manager.add_task(delayed(cached_func)(1, 1))
+
+        manager.run()
+
+        underlying_func.assert_called_once_with(1, 1)
+
+    def test_mock_object_preserved(self):
+        mock_func = Mock(return_value="output")
+
+        manager = TaskManager()
+        manager.add_task(delayed(mock_func)("input"))
+        results = manager.run()
+
+        assert results == ["output"]
+        mock_func.assert_called_once_with("input")
