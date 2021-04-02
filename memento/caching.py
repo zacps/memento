@@ -109,51 +109,43 @@ class MemoryCacheProvider(CacheProvider):
 
 class FileSystemCacheProvider(CacheProvider):
     def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
-        if filepath is None:
-            filepath = tempfile.TemporaryFile().name  # create a temporary file
-        if connection is None:
-            connection = sqlite3.connect(filepath)
-
-        self._filepath = filepath
         self._connection = connection
+        self._filepath = filepath or tempfile.TemporaryFile().name  # create temporary file
 
-        self.NOTHING = object()  # Need custom value, as functions cached value could be python None
         self.SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
         self.sql_select = f"SELECT value FROM cache WHERE key = ?"
-        self.sql_select_kv = f"SELECT key, value FROM cache ORDER BY ts"
-        self.sql_delete = "DELETE FROM cache WHERE key = ?"
         self.sql_insert = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
 
         self._create_db()
 
-    def _create_db(self):
-       self._connection.execute(f"""
-            CREATE TABLE IF NOT EXISTS cache (
-                key BINARY PRIMARY KEY,
-                ts REAL NOT NULL DEFAULT ({self.SQLITE_TIMESTAMP}),
-                value BLOB NOT NULL
-            ) WITHOUT ROWID
-        """)
+    def _create_db(self) -> None:
+        with self as db:
+            db.execute(f"""
+                CREATE TABLE IF NOT EXISTS cache (
+                    key BINARY PRIMARY KEY,
+                    ts REAL NOT NULL DEFAULT ({self.SQLITE_TIMESTAMP}),
+                    value BLOB NOT NULL
+                ) WITHOUT ROWID
+            """)
 
-    def __str__(self) -> str:
-        pass
+    def __enter__(self) -> sqlite3.Connection:
+        return self._connection or sqlite3.connect(self._filepath)
 
-    def __del__(self):
-        self.close()
-        #TODO: Close the temp file
-
-    def close(self):
-        self._connection.close()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._connection is not None:
+            self._connection.close()
 
     def get(self, key: str):
-        rows = self._connection.execute(self.sql_select, (key,), ).fetchall()
-        if rows:
-            return rows[0][0]
-        else:
-            raise KeyError()
+        with self as db:
+            rows = db.execute(self.sql_select, (key,), ).fetchall()
+            if rows:
+                return rows[0][0]
+            else:
+                raise KeyError()
 
     def set(self, key: str, item) -> None:
-        self._connection.execute(self.sql_insert, (key, item))
+        with self as db:
+            db.execute(self.sql_insert, (key, item))
 
     def contains(self, key: str) -> bool:
         try:
