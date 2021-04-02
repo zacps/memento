@@ -101,33 +101,33 @@ class TestMemoryCacheProvider:
 
 class TestFileSystemCacheProvider:
     def test_file_system_cache_provider_get_works_when_data_in_cache(self):
-        db = Mock(spec_set=Connection)
-        db.execute().fetchall.return_value = [["value"]]
-        provider = FileSystemCacheProvider(db=db)
+        connection = Mock(spec_set=Connection)
+        connection.execute().fetchall.return_value = [["value"]]
+        provider = FileSystemCacheProvider(connection=connection)
 
         value = provider.get("key")
 
         assert value == "value"
 
     def test_file_system_cache_provider_set_works(self):
-        db = Mock(spec_set=Connection)
-        provider = FileSystemCacheProvider(db=db)
+        connection = Mock(spec_set=Connection)
+        provider = FileSystemCacheProvider(connection=connection)
 
         provider.set("key", "value")
 
-        assert db.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key", "value")
+        assert connection.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key", "value")
 
     def test_file_system_cache_provider_contains_works_when_key_in_file(self):
-        db = Mock(spec_set=Connection)
-        db.execute().fetchall.return_value = [["value"]]
-        provider = FileSystemCacheProvider(db=db)
+        connection = Mock(spec_set=Connection)
+        connection.execute().fetchall.return_value = [["value"]]
+        provider = FileSystemCacheProvider(connection=connection)
 
         assert provider.contains("key") is True
 
     def test_file_system_cache_provider_contains_works_when_key_not_in_file(self):
-        db = Mock(spec_set=Connection)
-        db.execute().fetchall.return_value = None
-        provider = FileSystemCacheProvider(db=db)
+        connection = Mock(spec_set=Connection)
+        connection.execute().fetchall.return_value = None
+        provider = FileSystemCacheProvider(connection=connection)
 
         assert provider.contains("not_in_cache") is False
 
@@ -150,14 +150,15 @@ class TestFileSystemCacheProvider:
                 }
         )
 
-        db = Mock(spec_set=Connection)
-        provider = FileSystemCacheProvider(db)
+        connection = Mock(spec_set=Connection)
+        provider = FileSystemCacheProvider(connection)
         actual = provider.make_key(function, *arguments, **keyword_arguments)
 
         assert expected == actual
 
-    def test_file_system_cache_provider_raises_keyError_when_key_not_in_cache(self):
-        db = Mock(spec_set=Connection)
-        provider = FileSystemCacheProvider(db)
+    def test_file_system_cache_provider_get_raises_key_error_when_key_not_in_cache(self):
+        connection = Mock(spec_set=Connection)
+        connection.execute().fetchall.return_value = None
+        provider = FileSystemCacheProvider(connection=connection)
         with pytest.raises(KeyError) as error_info:
             provider.get("not_in_cache")

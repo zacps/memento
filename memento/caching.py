@@ -2,8 +2,9 @@
 Contains classes for implementing caching of functions.
 """
 import sqlite3
+import tempfile
 from abc import ABC, abstractmethod
-from typing import Callable, TextIO
+from typing import Callable
 import cloudpickle
 
 
@@ -107,14 +108,14 @@ class MemoryCacheProvider(CacheProvider):
 
 
 class FileSystemCacheProvider(CacheProvider):
-    def __init__(self, db: sqlite3.Connection = None, filepath: str = None):
+    def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
         if filepath is None:
-            filepath = "../.memento/cache"
-        if db is None:
-            db = sqlite3.connect(filepath)
+            filepath = tempfile.TemporaryFile().name  # create a temporary file
+        if connection is None:
+            connection = sqlite3.connect(filepath)
 
         self._filepath = filepath
-        self._db = db
+        self._connection = connection
 
         self.NOTHING = object()  # Need custom value, as functions cached value could be python None
         self.SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
@@ -123,10 +124,10 @@ class FileSystemCacheProvider(CacheProvider):
         self.sql_delete = "DELETE FROM cache WHERE key = ?"
         self.sql_insert = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
 
-        self._init_db()
+        self._create_db()
 
-    def _init_db(self):
-       self._db.execute(f"""
+    def _create_db(self):
+       self._connection.execute(f"""
             CREATE TABLE IF NOT EXISTS cache (
                 key BINARY PRIMARY KEY,
                 ts REAL NOT NULL DEFAULT ({self.SQLITE_TIMESTAMP}),
@@ -134,28 +135,25 @@ class FileSystemCacheProvider(CacheProvider):
             ) WITHOUT ROWID
         """)
 
-    def __enter__(self):
-        self._init_db()
-        return self.db
-
     def __str__(self) -> str:
         pass
 
     def __del__(self):
         self.close()
+        #TODO: Close the temp file
 
     def close(self):
-        self._db.close()
+        self._connection.close()
 
     def get(self, key: str):
-        rows = self._db.execute(self.sql_select, (key,), ).fetchall()
+        rows = self._connection.execute(self.sql_select, (key,), ).fetchall()
         if rows:
             return rows[0][0]
         else:
             raise KeyError()
 
     def set(self, key: str, item) -> None:
-        self._db.execute(self.sql_insert, (key, item))
+        self._connection.execute(self.sql_insert, (key, item))
 
     def contains(self, key: str) -> bool:
         try:
