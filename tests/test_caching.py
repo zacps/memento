@@ -1,7 +1,8 @@
+from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
 import cloudpickle
-from memento.caching import Cache, MemoryCacheProvider, CacheProvider
+from memento.caching import Cache, MemoryCacheProvider, CacheProvider, FileSystemCacheProvider
 
 
 class TestCache:
@@ -38,9 +39,9 @@ class TestCache:
 
         cache_provider.set.assert_called_once_with(cache_key, result)
 
-    def test_cache_creates_memory_cache_provider_by_default(self):
+    def test_cache_creates_file_system_cache_provider_by_default(self):
         cache = Cache(lambda x: x + 1)
-        assert isinstance(cache._cache_provider, MemoryCacheProvider)
+        assert isinstance(cache._cache_provider, FileSystemCacheProvider)
 
 
 class TestMemoryCacheProvider:
@@ -80,11 +81,11 @@ class TestMemoryCacheProvider:
             "key4": False,
         }
         expected = cloudpickle.dumps(
-            {
-                "function": function,
-                "args": arguments,
-                "kwargs": keyword_arguments,
-            }
+                {
+                    "function": function,
+                    "args"    : arguments,
+                    "kwargs"  : keyword_arguments,
+                }
         )
 
         provider = MemoryCacheProvider()
@@ -92,7 +93,71 @@ class TestMemoryCacheProvider:
 
         assert expected == actual
 
-    def test_memory_cache_provider_raises_keyError_when_key_not_in_cache(self):
+    def test_memory_cache_provider_raises_key_error_when_key_not_in_cache(self):
         provider = MemoryCacheProvider()
+        with pytest.raises(KeyError) as error_info:
+            provider.get("not_in_cache")
+
+
+class TestFileSystemCacheProvider:
+    def test_file_system_cache_provider_get_works_when_data_in_cache(self):
+        db = Mock(spec_set=Connection)
+        db.execute().fetchall.return_value = [["value"]]
+        provider = FileSystemCacheProvider(db=db)
+
+        value = provider.get("key")
+
+        assert value == "value"
+
+    def test_file_system_cache_provider_set_works(self):
+        db = Mock(spec_set=Connection)
+        provider = FileSystemCacheProvider(db=db)
+
+        provider.set("key", "value")
+
+        assert db.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key", "value")
+
+    def test_file_system_cache_provider_contains_works_when_key_in_file(self):
+        db = Mock(spec_set=Connection)
+        db.execute().fetchall.return_value = [["value"]]
+        provider = FileSystemCacheProvider(db=db)
+
+        assert provider.contains("key") is True
+
+    def test_file_system_cache_provider_contains_works_when_key_not_in_file(self):
+        db = Mock(spec_set=Connection)
+        db.execute().fetchall.return_value = None
+        provider = FileSystemCacheProvider(db=db)
+
+        assert provider.contains("not_in_cache") is False
+
+    def test_file_system_cache_provider_creates_correct_keys(self):
+        def function(*args):
+            return args
+
+        arguments = ("test1", "test2", 123, True)
+        keyword_arguments = {
+            "key1": "value1",
+            "key2": "value2",
+            "key3": 321,
+            "key4": False,
+        }
+        expected = cloudpickle.dumps(
+                {
+                    "function": function,
+                    "args"    : arguments,
+                    "kwargs"  : keyword_arguments,
+                }
+        )
+
+        db = Mock(spec_set=Connection)
+        provider = FileSystemCacheProvider(db)
+        actual = provider.make_key(function, *arguments, **keyword_arguments)
+
+        assert expected == actual
+
+    def test_file_system_cache_provider_raises_keyError_when_key_not_in_cache(self):
+        db = Mock(spec_set=Connection)
+        provider = FileSystemCacheProvider(db)
         with pytest.raises(KeyError) as error_info:
             provider.get("not_in_cache")

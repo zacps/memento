@@ -1,8 +1,9 @@
 """
 Contains classes for implementing caching of functions.
 """
+import sqlite3
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, TextIO
 import cloudpickle
 
 
@@ -105,6 +106,68 @@ class MemoryCacheProvider(CacheProvider):
         return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
 
 
+class FileSystemCacheProvider(CacheProvider):
+    def __init__(self, db: sqlite3.Connection = None, filepath: str = None):
+        if filepath is None:
+            filepath = "../.memento/cache"
+        if db is None:
+            db = sqlite3.connect(filepath)
+
+        self._filepath = filepath
+        self._db = db
+
+        self.NOTHING = object()  # Need custom value, as functions cached value could be python None
+        self.SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
+        self.sql_select = f"SELECT value FROM cache WHERE key = ?"
+        self.sql_select_kv = f"SELECT key, value FROM cache ORDER BY ts"
+        self.sql_delete = "DELETE FROM cache WHERE key = ?"
+        self.sql_insert = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
+
+        self._init_db()
+
+    def _init_db(self):
+       self._db.execute(f"""
+            CREATE TABLE IF NOT EXISTS cache (
+                key BINARY PRIMARY KEY,
+                ts REAL NOT NULL DEFAULT ({self.SQLITE_TIMESTAMP}),
+                value BLOB NOT NULL
+            ) WITHOUT ROWID
+        """)
+
+    def __enter__(self):
+        self._init_db()
+        return self.db
+
+    def __str__(self) -> str:
+        pass
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self._db.close()
+
+    def get(self, key: str):
+        rows = self._db.execute(self.sql_select, (key,), ).fetchall()
+        if rows:
+            return rows[0][0]
+        else:
+            raise KeyError()
+
+    def set(self, key: str, item) -> None:
+        self._db.execute(self.sql_insert, (key, item))
+
+    def contains(self, key: str) -> bool:
+        try:
+            self.get(key)
+            return True
+        except KeyError:
+            return False
+
+    def make_key(self, func: Callable, *args, **kwargs) -> str:
+        return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
+
+
 class Cache:
     """
     A higher order function that caches another, underlying function.
@@ -124,11 +187,11 @@ class Cache:
             cached_function = Cache(underlying_function)
 
         :param func: The function to be cached.
-        :param cache_provider: The cache provider, defaults to MemoryCacheProvider
+        :param cache_provider: The cache provider, defaults to FileSystemCacheProvider
         """
         self._func = func
         if cache_provider is None:
-            cache_provider = MemoryCacheProvider()
+            cache_provider = FileSystemCacheProvider()
         self._cache_provider = cache_provider
 
     def __call__(self, *args, **kwargs):
