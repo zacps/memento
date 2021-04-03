@@ -109,45 +109,84 @@ class MemoryCacheProvider(CacheProvider):
 
 
 class FileSystemCacheProvider(CacheProvider):
+    """
+    A filesystem caching provider. Uses SQLITE3 to write to a db file on disk.
+    """
     def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
+        """
+        Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
+        :param connection: A sqlite3 DB connection to use.
+        :param filepath: A filepath to use for the db file.
+        """
         self._connection = connection
         self._filepath = filepath or tempfile.TemporaryFile().name  # create temporary file
 
-        self.SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
-        self.sql_select = f"SELECT value FROM cache WHERE key = ?"
-        self.sql_insert = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
+        self._SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
+        self._SQL_SELECT = "SELECT value FROM cache WHERE key = ?"
+        self._SQL_INSERT = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
+        self._SQL_DUMP_ALL_KEYS_VALUES = "SELECT key, value FROM cache ORDER BY ts"
 
         self._create_db()
 
     def _create_db(self) -> None:
+        """
+        Sets up the db, creating a "cache" table, with a key, value, and timestamp column.
+        :return: Nothing.
+        """
         with self as db:
             db.execute(f"""
                 CREATE TABLE IF NOT EXISTS cache (
                     key BINARY PRIMARY KEY,
-                    ts REAL NOT NULL DEFAULT ({self.SQLITE_TIMESTAMP}),
+                    ts REAL NOT NULL DEFAULT ({self._SQLITE_TIMESTAMP}),
                     value BLOB NOT NULL
                 ) WITHOUT ROWID
             """)
 
     def __enter__(self) -> sqlite3.Connection:
+        """
+        Used to connect to the underlying db safely, handling setup and teardown.
+
+        Runs at the beginning of a `with _ as _` block
+        ...
+            with file_system_caching_object as db:
+                db.execute("some SQL")
+
+        :return: A sqlite3 Connection object, representing a db connection.
+        """
         return self._connection or sqlite3.connect(self._filepath)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Used to disconnect the underlying db safely.
+
+        Runs at the end of a `with _ as _` block
+        ...
+            with file_system_caching_object as db:
+                db.execute("some SQL")
+
+        :return: Nothing.
+        """
         if self._connection is not None:
             self._connection.close()
 
-    def __del__(self):
-        if self._connection is not None:
-            self._connection.close()
+    def __del__(self) -> None:
+        """
+        Class destructor, runs when the object is deleted.
+
+        Closes any DB connections, and deletes the temporary file object.
+
+        :return: Nothing.
+        """
+        self.__exit__()
         os.remove(self._filepath)  # remove the temp file
 
     def __str__(self) -> str:
-        raise NotImplementedError()
-
+        with self as db:
+            return str(db.execute(self._SQL_DUMP_ALL_KEYS_VALUES).fetchall())
 
     def get(self, key: str):
         with self as db:
-            rows = db.execute(self.sql_select, (key,), ).fetchall()
+            rows = db.execute(self._SQL_SELECT, (key,), ).fetchall()
             if rows:
                 return rows[0][0]
             else:
@@ -155,7 +194,7 @@ class FileSystemCacheProvider(CacheProvider):
 
     def set(self, key: str, item) -> None:
         with self as db:
-            db.execute(self.sql_insert, (key, item))
+            db.execute(self._SQL_INSERT, (key, item))
 
     def contains(self, key: str) -> bool:
         try:
