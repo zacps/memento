@@ -2,7 +2,12 @@ from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
 import cloudpickle
-from memento.caching import Cache, MemoryCacheProvider, CacheProvider, FileSystemCacheProvider
+from memento.caching import (
+    Cache,
+    MemoryCacheProvider,
+    CacheProvider,
+    FileSystemCacheProvider,
+)
 from memento.parallel import TaskManager, delayed
 
 
@@ -82,11 +87,11 @@ class TestMemoryCacheProvider:
             "key4": False,
         }
         expected = cloudpickle.dumps(
-                {
-                    "function": function,
-                    "args"    : arguments,
-                    "kwargs"  : keyword_arguments,
-                }
+            {
+                "function": function,
+                "args": arguments,
+                "kwargs": keyword_arguments,
+            }
         )
 
         provider = MemoryCacheProvider()
@@ -116,8 +121,9 @@ class TestFileSystemCacheProvider:
 
         provider.set("key", "value")
 
-        assert connection.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key",
-                                                   "value")
+        assert connection.execute.called_once_with(
+            "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key", "value"
+        )
 
     def test_file_system_cache_provider_contains_works_when_key_in_file(self):
         connection = Mock(spec_set=Connection)
@@ -145,11 +151,11 @@ class TestFileSystemCacheProvider:
             "key4": False,
         }
         expected = cloudpickle.dumps(
-                {
-                    "function": function,
-                    "args"    : arguments,
-                    "kwargs"  : keyword_arguments,
-                }
+            {
+                "function": function,
+                "args": arguments,
+                "kwargs": keyword_arguments,
+            }
         )
 
         connection = Mock(spec_set=Connection)
@@ -158,7 +164,9 @@ class TestFileSystemCacheProvider:
 
         assert expected == actual
 
-    def test_file_system_cache_provider_get_raises_key_error_when_key_not_in_cache(self):
+    def test_file_system_cache_provider_get_raises_key_error_when_key_not_in_cache(
+        self,
+    ):
         connection = Mock(spec_set=Connection)
         connection.execute().fetchall.return_value = None
         provider = FileSystemCacheProvider(connection=connection)
@@ -181,7 +189,7 @@ class TestFileSystemCacheProvider:
 
         provider.set("key", "value")
         provider.get("key")
-        provider.make_key(lambda x: x+1, 1)
+        provider.make_key(lambda x: x + 1, 1)
 
         del provider
 
@@ -201,4 +209,4 @@ class TestFileSystemCacheProvider:
 
         res = manager.run()
 
-        assert res == [2]*10
+        assert res == [2] * 10
