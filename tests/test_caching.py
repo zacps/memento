@@ -184,15 +184,21 @@ class TestFileSystemCacheProvider:
         assert os.path.exists(filepath) is False
 
     def test_file_system_cache_provider_works_in_parallel(self):
-        underlying_func = Mock(return_value=2)
-        provider = MemoryCacheProvider()
+        provider = FileSystemCacheProvider()
+
+        def underlying_func(a, b):
+            return a + b
+
         cached_func = Cache(underlying_func, cache_provider=provider)
+
         manager = TaskManager()
-        manager.add_task(delayed(cached_func)(1, 1))
+        for x in range(10):
+            manager.add_task(delayed(cached_func)(1, 1))
 
-        manager.run()
+        res = manager.run()
 
-        underlying_func.assert_called_once_with(1, 1)
+        assert res == [2]*10
+
 
     def test_mock_object_preserved(self):
         mock_func = Mock(return_value="output")

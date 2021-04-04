@@ -153,9 +153,7 @@ class FileSystemCacheProvider(CacheProvider):
 
         :return: A sqlite3 Connection object, representing a db connection.
         """
-        if self._connection is None:
-            self._connection = sqlite3.connect(self._filepath, isolation_level="DEFERRED")
-        return self._connection
+        return self._connection or sqlite3.Connection(self._filepath, isolation_level="DEFERRED")
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
