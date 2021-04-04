@@ -177,10 +177,7 @@ class FileSystemCacheProvider(CacheProvider):
 
     def get(self, key: str):
         with self as database:
-            rows = database.execute(
-                self._sql_select,
-                (key,),
-            ).fetchall()
+            rows = database.execute(self._sql_select, (key,)).fetchall()
             if rows:
                 return rows[0][0]
 
