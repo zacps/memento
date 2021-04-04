@@ -1,6 +1,9 @@
 """
 Contains classes for implementing caching of functions.
 """
+import os
+import sqlite3
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Callable
 import cloudpickle
@@ -105,6 +108,97 @@ class MemoryCacheProvider(CacheProvider):
         return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
 
 
+class FileSystemCacheProvider(CacheProvider):
+    """
+    A filesystem caching provider. Uses SQLITE3 to write to a database file on disk.
+    """
+
+    def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
+        """
+        Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
+        :param connection: A sqlite3 DB connection to use. Supplying this breaks parallelization.
+        :param filepath: A filepath to use for the database file (relative or absolute).
+        """
+        self._connection = connection  # if none is handled elsewhere
+        # use a temporary file (in appropriate tmp dir) if no file provided
+        self._filepath = os.path.abspath(
+            filepath or tempfile.NamedTemporaryFile(suffix="_memento.cache").name
+        )
+
+        self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
+        self._sql_select = "SELECT value FROM cache WHERE key = ?"
+        self._sql_insert = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
+
+        self._setup_database()
+
+    def _setup_database(self) -> None:
+        """
+        Sets up the database, creating a "cache" table, with a key, value, and timestamp column.
+        :return: Nothing.
+        """
+        with self as database:
+            database.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS cache (
+                    key BINARY PRIMARY KEY,
+                    ts REAL NOT NULL DEFAULT ({self._sqlite_timestamp}),
+                    value BLOB NOT NULL
+                ) WITHOUT ROWID
+            """
+            )
+
+    def __enter__(self) -> sqlite3.Connection:
+        """
+        Used to connect to the underlying database safely, handling setup and teardown.
+
+        Runs at the beginning of a `with _ as _` block
+        ...
+            with file_system_caching_object as database:
+                database.execute("some SQL")
+
+        :return: A sqlite3 Connection object, representing a database connection.
+        """
+        return self._connection or sqlite3.Connection(
+            self._filepath, isolation_level="DEFERRED"
+        )
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """
+        Run at the end of the `with _ as _` block
+        ...
+            with file_system_caching_object as database:
+                database.execute("some SQL")
+
+        :return: Nothing.
+        """
+
+    def __str__(self) -> str:
+        return f"Filesystem cache, using {self._connection or self._filepath}"
+
+    def get(self, key: str):
+        with self as database:
+            rows = database.execute(self._sql_select, (key,)).fetchall()
+            if rows:
+                return rows[0][0]
+
+            raise KeyError(f"Key '{key}' not in cache")
+
+    def set(self, key: str, item) -> None:
+        with self as database:
+            database.execute(self._sql_insert, (key, item))
+            database.commit()
+
+    def contains(self, key: str) -> bool:
+        try:
+            self.get(key)
+            return True
+        except KeyError:
+            return False
+
+    def make_key(self, func: Callable, *args, **kwargs) -> str:
+        return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
+
+
 class Cache:
     """
     A higher order function that caches another, underlying function.
@@ -124,11 +218,11 @@ class Cache:
             cached_function = Cache(underlying_function)
 
         :param func: The function to be cached.
-        :param cache_provider: The cache provider, defaults to MemoryCacheProvider
+        :param cache_provider: The cache provider, defaults to FileSystemCacheProvider
         """
         self._func = func
         if cache_provider is None:
-            cache_provider = MemoryCacheProvider()
+            cache_provider = FileSystemCacheProvider()
         self._cache_provider = cache_provider
 
     def __call__(self, *args, **kwargs):
