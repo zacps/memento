@@ -104,6 +104,19 @@ def test_parallel_returns_correct_result(task: Callable, expected: List):
     assert results == expected
 
 
+def test_parallel_order():
+    manager = TaskManager()
+
+    def identity(x):
+        return x
+
+    manager.add_tasks(delayed(identity)(x) for x in range(10))
+
+    results = manager.run()
+
+    assert results == list(range(10))
+
+
 def read_file(file: TextIO):
     return file.readlines()
 
