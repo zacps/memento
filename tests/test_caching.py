@@ -1,4 +1,3 @@
-import os
 from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
@@ -166,7 +165,7 @@ class TestFileSystemCacheProvider:
         with pytest.raises(KeyError) as error_info:
             provider.get("not_in_cache")
 
-    def test_file_system_cache_provider_works_in_full(self):
+    def test_file_system_cache_provider_sets_then_gets_to_file(self):
         provider = FileSystemCacheProvider()
         provider.set("test_key1", "test_value1")
         provider.set("test_key2", "test_value2")
@@ -175,13 +174,18 @@ class TestFileSystemCacheProvider:
         assert provider.get("test_key1") == "test_value3"
         assert provider.get("test_key2") == "test_value2"
 
-    def test_file_system_cache_provider_cleans_up_when_object_deleted(self):
-        provider = FileSystemCacheProvider()
-        filepath = provider._filepath
+    def test_file_system_cache_provider_does_not_close_supplied_connection(self):
+        connection = Mock(spec_set=Connection)
+        connection.execute().fetchall.return_value = [["value"]]
+        provider = FileSystemCacheProvider(connection=connection)
 
-        del provider  # delete the object
+        provider.set("key", "value")
+        provider.get("key")
+        provider.make_key(lambda x: x+1, 1)
 
-        assert os.path.exists(filepath) is False
+        del provider
+
+        connection.close.assert_not_called()
 
     def test_file_system_cache_provider_works_in_parallel(self):
         provider = FileSystemCacheProvider()
@@ -198,14 +202,3 @@ class TestFileSystemCacheProvider:
         res = manager.run()
 
         assert res == [2]*10
-
-
-    def test_mock_object_preserved(self):
-        mock_func = Mock(return_value="output")
-
-        manager = TaskManager()
-        manager.add_task(delayed(mock_func)("input"))
-        results = manager.run()
-
-        assert results == ["output"]
-        mock_func.assert_called_once_with("input")

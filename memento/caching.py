@@ -115,11 +115,12 @@ class FileSystemCacheProvider(CacheProvider):
     def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
         """
         Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
-        :param connection: A sqlite3 DB connection to use.
+        :param connection: A sqlite3 DB connection to use. Supplying this breaks parallelization.
         :param filepath: A filepath to use for the db file (relative or absolute).
         """
-        self._connection = connection
-        self._filepath = os.path.abspath(filepath) if (filepath is not None) else tempfile.TemporaryFile().name
+        self._connection = connection  # if none is handled elsewhere
+        # use a temporary file (in appropriate tmp dir) if no file provided
+        self._filepath = os.path.abspath(filepath or tempfile.NamedTemporaryFile(suffix="_memento.cache").name)
 
         self._SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
         self._SQL_SELECT = "SELECT value FROM cache WHERE key = ?"
@@ -157,26 +158,14 @@ class FileSystemCacheProvider(CacheProvider):
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
-        Used to push any changes made in a `with _ as _` block
+        Run at the end of the `with _ as _` block
         ...
             with file_system_caching_object as db:
                 db.execute("some SQL")
 
         :return: Nothing.
         """
-        if self._connection is not None:
-            self._connection.commit()
-
-    def __del__(self) -> None:
-        """
-        Class destructor, runs when the object is deleted.
-
-        Closes any DB connections, and deletes the temporary file object.
-
-        :return: Nothing.
-        """
-        self._connection.close()
-        os.remove(self._filepath)  # remove the temp file
+        pass
 
     def __str__(self) -> str:
         return f"Filesystem cache, using {self._connection or self._filepath}"
@@ -192,6 +181,7 @@ class FileSystemCacheProvider(CacheProvider):
     def set(self, key: str, item) -> None:
         with self as db:
             db.execute(self._SQL_INSERT, (key, item))
+            db.commit()
 
     def contains(self, key: str) -> bool:
         try:
