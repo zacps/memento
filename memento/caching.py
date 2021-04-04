@@ -116,14 +116,14 @@ class FileSystemCacheProvider(CacheProvider):
         """
         Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
         :param connection: A sqlite3 DB connection to use.
-        :param filepath: A filepath to use for the db file.
+        :param filepath: A filepath to use for the db file (relative or absolute).
         """
         self._connection = connection
-        self._filepath = filepath or tempfile.TemporaryFile().name  # create temporary file
+        self._filepath = os.path.abspath(filepath) if (filepath is not None) else tempfile.TemporaryFile().name
 
         self._SQLITE_TIMESTAMP = "(julianday('now') - 2440587.5)*86400.0"
         self._SQL_SELECT = "SELECT value FROM cache WHERE key = ?"
-        self._SQL_INSERT = "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)"
+        self._SQL_INSERT = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
         self._SQL_DUMP_ALL_KEYS_VALUES = "SELECT key, value FROM cache ORDER BY ts"
 
         self._create_db()
@@ -153,13 +153,13 @@ class FileSystemCacheProvider(CacheProvider):
 
         :return: A sqlite3 Connection object, representing a db connection.
         """
-        return self._connection or sqlite3.connect(self._filepath)
+        if self._connection is None:
+            self._connection = sqlite3.connect(self._filepath, isolation_level="DEFERRED")
+        return self._connection
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """
-        Used to disconnect the underlying db safely.
-
-        Runs at the end of a `with _ as _` block
+        Used to push any changes made in a `with _ as _` block
         ...
             with file_system_caching_object as db:
                 db.execute("some SQL")
@@ -167,7 +167,7 @@ class FileSystemCacheProvider(CacheProvider):
         :return: Nothing.
         """
         if self._connection is not None:
-            self._connection.close()
+            self._connection.commit()
 
     def __del__(self) -> None:
         """
@@ -177,12 +177,11 @@ class FileSystemCacheProvider(CacheProvider):
 
         :return: Nothing.
         """
-        self.__exit__()
+        self._connection.close()
         os.remove(self._filepath)  # remove the temp file
 
     def __str__(self) -> str:
-        with self as db:
-            return str(db.execute(self._SQL_DUMP_ALL_KEYS_VALUES).fetchall())
+        return f"Filesystem cache, using {self._connection or self._filepath}"
 
     def get(self, key: str):
         with self as db:
@@ -190,7 +189,7 @@ class FileSystemCacheProvider(CacheProvider):
             if rows:
                 return rows[0][0]
             else:
-                raise KeyError()
+                raise KeyError(f"Key '{key}' not in cache")
 
     def set(self, key: str, item) -> None:
         with self as db:

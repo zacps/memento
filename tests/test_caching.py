@@ -1,3 +1,4 @@
+import os
 from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
@@ -116,7 +117,8 @@ class TestFileSystemCacheProvider:
 
         provider.set("key", "value")
 
-        assert connection.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key", "value")
+        assert connection.execute.called_once_with("INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", "key",
+                                                   "value")
 
     def test_file_system_cache_provider_contains_works_when_key_in_file(self):
         connection = Mock(spec_set=Connection)
@@ -163,6 +165,23 @@ class TestFileSystemCacheProvider:
         provider = FileSystemCacheProvider(connection=connection)
         with pytest.raises(KeyError) as error_info:
             provider.get("not_in_cache")
+
+    def test_file_system_cache_provider_works_in_full(self):
+        provider = FileSystemCacheProvider()
+        provider.set("test_key1", "test_value1")
+        provider.set("test_key2", "test_value2")
+        provider.set("test_key1", "test_value3")
+
+        assert provider.get("test_key1") == "test_value3"
+        assert provider.get("test_key2") == "test_value2"
+
+    def test_file_system_cache_provider_cleans_up_when_object_deleted(self):
+        provider = FileSystemCacheProvider()
+        filepath = provider._filepath
+
+        del provider  # delete the object
+
+        assert os.path.exists(filepath) is False
 
     def test_file_system_cache_provider_works_in_parallel(self):
         underlying_func = Mock(return_value=2)
