@@ -139,6 +139,9 @@ class Config:
     def _set(self, name, value):
         self._dict[name] = value
 
+    def __repr__(self):
+        return self._dict.__repr__()
+
     def asdict(self):
         """
         Return the internal `dict` of parameters.

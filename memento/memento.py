@@ -2,11 +2,14 @@
 Contains `Memento`, the main entry point of MEMENTO.
 """
 
-from typing import Any, Callable, List
+import logging
+from typing import Any, Callable, List, Optional
 
 from memento.parallel import TaskManager, delayed
-from memento.caching import MemoryCacheProvider
+from memento.caching import Cache
 from memento.configurations import configurations
+
+logger = logging.getLogger(__name__)
 
 
 class Memento:  # pylint: disable=R0903
@@ -17,26 +20,36 @@ class Memento:  # pylint: disable=R0903
     def __init__(self, func: Callable):
         self.func = func
 
-    def run(self, matrix: dict) -> List[Any]:
+    def run(self, matrix: dict, dry_run: bool = False) -> Optional[List[Any]]:
         """
         Run a configuration matrix and return it's results.
         """
 
         configs = configurations(matrix)
 
-        # TODO: This should be a filesystem backed cache
-        cache = MemoryCacheProvider()
+        logger.info("Running configurations:")
+        for config in configs:
+            logger.info("  %s", config)
+
+        if dry_run:
+            logger.info("Exiting due to dry run")
+            return None
+
+        cache = Cache(self.func)
         manager = TaskManager()
 
         results = [None] * len(configs)
 
         for i, config in enumerate(configs):
             try:
-                results[i] = cache.get(config)
+                results[i] = cache(config, force_cache=True)
             except KeyError:
                 # TODO: We should pass in a context object so the user's code can interact with
                 # memento in a task.
-                manager.add_task(delayed(self.func)(config))
+                manager.add_task(delayed(cache)(config))
+
+        n_cached = len([result for result in results if result is not None])
+        logger.info("%s/%s results retrieved from cache", n_cached, len(configs))
 
         others = manager.run()[::-1]
 
