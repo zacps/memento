@@ -14,15 +14,23 @@ logger = logging.getLogger(__name__)
 
 class Memento:  # pylint: disable=R0903
     """
-    The main entry point of MEMENTO.
+    The main class of MEMENTO. This is the 'front end' of MEMENTO with which you can run a
+    configuration matrix and retrieve results from your experiments.
     """
 
     def __init__(self, func: Callable):
+        """
+        :param func: Your experiment code. This will be called with an experiment configuration.
+        """
         self.func = func
 
     def run(self, matrix: dict, dry_run: bool = False) -> Optional[List[Any]]:
         """
         Run a configuration matrix and return it's results.
+
+        :param matrix: A configuration matrix
+        :param dry_run: Do not actually run experiments, just log what would be run
+        :returns: A list of results from your experiments.
         """
 
         configs = configurations(matrix)

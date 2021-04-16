@@ -1,65 +1,15 @@
 """
-Contains MEMENTO's main entrypoint, `run`, and the configuration generator.
+Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` types.
 """
 
 import itertools
 
 
-def configurations(matrix: dict):
+def configurations(matrix: dict) -> "Configurations":
     """
-    ``matrix`` describes the list of experiments you want MEMENTO to run. This must contain a key
-    ``parameters`` which is itself a dict, this describes each paramter you want to vary for your
-    experiments and their values.
-
-    As an example let's say you wanted to test a few simple linear classifiers on a number of
-    image recognition datasets. You might write something like this:
-
-    .. note::
-        Don't worry if you're not working on machine learning, this is just an example.
-
-    ::
-
-        matrix = {
-            "parameters": {
-                "model": [
-                    sklearn.svm.SVC,
-                    sklearn.linear_model.Perceptron,
-                    sklearn.linear_model.LogisticRegression
-                ],
-                "dataset": ["imagenet", "mnist", "cifar10", "quickdraw"]
-            }
-        }
-
-    MEMENTO would then generate 12 configurations by taking the *cartesian product* of the
-    parameters.
-
-    Frequently you might also want to set some global configuration values, such as a regularization
-    parameter or potentially even change your preprocessing pipeline. In this case MEMENTO also
-    accepts a "settings" key. These settings apply to all experiments and can be accessed from the
-    configuration list as well as individual configurations.
-
-    ::
-
-        matrix = {
-            "parameters": ...,
-            "settings": {
-                "regularization": 1e-1,
-                "preprocessing": make_preprocessing_pipeline()
-            }
-        }
-
-    You can also exclude specific parameter configurations. Returning to our machine learning
-    example, if you know SVCs perform poorly on cifar10 you might decide to skip that
-    experiment entirely. This is done with the "exclude" key:
-
-    ::
-
-        matrix = {
-            "parameters": ...,
-            "exclude": [
-                {"model": sklearn.svm.SVC, "dataset": "cifar10"}
-            ]
-        }
+    Generate a list of configurations from a configuration matrix. You usually shouldn't need to
+    call this directly, as it's called as part of ``Memento.run``. Of course, if you don't want
+    to use MEMENTO's runner framework this method can be used completely standalone.
     """
 
     if not isinstance(matrix, dict):
