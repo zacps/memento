@@ -241,10 +241,13 @@ class Cache:
             cached_func()
 
         :param args: Arguments to the underlying function.
+        :param force_cache: Attempt to retrieve cached results, raising
+        ``KeyError`` if they do not exist
+        :param force_run: Run the function, ignoring any cached values
         :param kwargs: Keyword arguments to the underlying function.
         :return: The (cached) result of the underlying function.
         """
-        key = self._cache_provider.make_key(self, self._func, *args, **kwargs)
+        key = self._cache_provider.make_key(self._func, *args, **kwargs)
 
         try:
             if force_run:
