@@ -1,3 +1,5 @@
+import time
+
 from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
@@ -48,6 +50,30 @@ class TestCache:
     def test_cache_creates_file_system_cache_provider_by_default(self):
         cache = Cache(lambda x: x + 1)
         assert isinstance(cache._cache_provider, FileSystemCacheProvider)
+
+    def test_cache_force_cache(self):
+        underlying_func = Mock()
+        cache_provider = Mock(spec_set=CacheProvider)
+        cache_provider.get.side_effect = KeyError()
+
+        cached = Cache(underlying_func, cache_provider)
+        with pytest.raises(KeyError):
+            cached({"key1": "value1"}, force_cache=True)
+        underlying_func.assert_not_called()
+
+    def test_cache_force_run(self):
+        def func():
+            return time.monotonic()
+
+        cached_function = Cache(func, cache_provider=MemoryCacheProvider())
+
+        first = cached_function()
+        time.sleep(0.1)
+        second = cached_function()
+        time.sleep(0.1)
+        third = cached_function(force_run=True)
+
+        assert first == second and second != third
 
 
 class TestMemoryCacheProvider:

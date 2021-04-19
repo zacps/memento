@@ -4,10 +4,26 @@ memento package
 Submodules
 ----------
 
+memento.caching module
+----------------------
+
+.. automodule:: memento.caching
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 memento.configurations module
 -----------------------------
 
 .. automodule:: memento.configurations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+memento.memento module
+----------------------
+
+.. automodule:: memento.memento
    :members:
    :undoc-members:
    :show-inheritance:

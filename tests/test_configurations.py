@@ -1,13 +1,13 @@
-from memento import run
+from memento.configurations import configurations
 
 
-def test_run():
+def test_configurations():
     matrix = {
         "parameters": {"param1": [1, 2, 3], "param2": [4, 5, 6]},
         "exclude": [{"param1": 3, "param2": 6}],
     }
 
-    configurations = run(matrix)
+    configs = configurations(matrix)
     expected = [
         {"param1": 1, "param2": 4},
         {"param1": 1, "param2": 5},
@@ -21,7 +21,7 @@ def test_run():
         # {"param1": 3, "param2": 6},
     ]
 
-    assert len(configurations) == len(expected)
+    assert len(configs) == len(expected)
 
-    for config, expected in zip(configurations, expected):
+    for config, expected in zip(configs, expected):
         assert config.asdict() == expected

@@ -1,67 +1,15 @@
 """
-Contains MEMENTO's main entrypoint, `run`, and the configuration generator.
+Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` types.
 """
 
 import itertools
 
 
-def run(matrix: dict):
+def configurations(matrix: dict) -> "Configurations":
     """
-    The main entry point of MEMENTO.
-
-    ``matrix`` describes the list of experiments you want MEMENTO to run. This must contain a key
-    ``parameters`` which is itself a dict, this describes each paramter you want to vary for your
-    experiments and their values.
-
-    As an example let's say you wanted to test a few simple linear classifiers on a number of
-    image recognition datasets. You might write something like this:
-
-    .. note::
-        Don't worry if you're not working on machine learning, this is just an example.
-
-    ::
-
-        matrix = {
-            "parameters": {
-                "model": [
-                    sklearn.svm.SVC,
-                    sklearn.linear_model.Perceptron,
-                    sklearn.linear_model.LogisticRegression
-                ],
-                "dataset": ["imagenet", "mnist", "cifar10", "quickdraw"]
-            }
-        }
-
-    MEMENTO would then generate 12 configurations by taking the *cartesian product* of the
-    parameters.
-
-    Frequently you might also want to set some global configuration values, such as a regularization
-    parameter or potentially even change your preprocessing pipeline. In this case MEMENTO also
-    accepts a "settings" key. These settings apply to all experiments and can be accessed from the
-    configuration list as well as individual configurations.
-
-    ::
-
-        matrix = {
-            "parameters": ...,
-            "settings": {
-                "regularization": 1e-1,
-                "preprocessing": make_preprocessing_pipeline()
-            }
-        }
-
-    You can also exclude specific parameter configurations. Returning to our machine learning
-    example, if you know SVCs perform poorly on cifar10 you might decide to skip that
-    experiment entirely. This is done with the "exclude" key:
-
-    ::
-
-        matrix = {
-            "parameters": ...,
-            "exclude": [
-                {"model": sklearn.svm.SVC, "dataset": "cifar10"}
-            ]
-        }
+    Generate a list of configurations from a configuration matrix. You usually shouldn't need to
+    call this directly, as it's called as part of ``Memento.run``. Of course, if you don't want
+    to use MEMENTO's runner framework this method can be used completely standalone.
     """
 
     if not isinstance(matrix, dict):
@@ -70,22 +18,23 @@ def run(matrix: dict):
     if "parameters" not in matrix:
         raise ValueError("matrix must contain a 'parameters' key")
 
+    if "settings" in matrix["parameters"]:
+        raise ValueError("settings is a reserved parameter name")
+
     parameters = matrix["parameters"]
     settings = matrix.get("settings", {})
     exclude = matrix.get("exclude", [])
 
     # Generate the cartesian product of all parameters
     elements = itertools.product(*parameters.values())
-    configurations = [
-        Config(**dict(zip(parameters.keys(), element))) for element in elements
-    ]
+    configs = [Config(**dict(zip(parameters.keys(), element))) for element in elements]
 
     for ex in exclude:
-        for i, config in enumerate(configurations):
+        for i, config in enumerate(configs):
             if all(getattr(config, k, _Never) == v for k, v in ex.items()):
-                del configurations[i]
+                del configs[i]
 
-    return Configurations(configurations, settings)
+    return Configurations(configs, settings)
 
 
 class Configurations:
@@ -95,8 +44,8 @@ class Configurations:
     Global settings can be accessed via `configurations.settings`.
     """
 
-    def __init__(self, configurations, settings):
-        self.configurations = configurations
+    def __init__(self, configs, settings):
+        self.configurations = configs
         self.settings = settings
 
         # Create back-references
@@ -120,14 +69,28 @@ class Config:
     Global settings can also be accessed via `config.settings`.
     """
 
+    def __new__(cls, *args, **kwargs):  # pylint: disable=W0613
+        self = super(Config, cls).__new__(cls)
+        # This is required to establish the invariant that `_dict` is always defined.
+        # During deserialization __getattr__ may be called before __init__. If _dict
+        # is not defined this creates an infinite loop.
+        self._dict = {}
+        return self
+
     def __init__(self, **kwargs):
         self._dict = kwargs
 
     def __getattr__(self, name):
-        return self._dict[name]
+        try:
+            return self._dict[name]
+        except KeyError:
+            raise AttributeError from None
 
     def _set(self, name, value):
         self._dict[name] = value
+
+    def __repr__(self):
+        return self._dict.__repr__()
 
     def asdict(self):
         """

@@ -225,7 +225,9 @@ class Cache:
             cache_provider = FileSystemCacheProvider()
         self._cache_provider = cache_provider
 
-    def __call__(self, *args, **kwargs):
+    def __call__(
+        self, *args, force_cache: bool = False, force_run: bool = False, **kwargs
+    ):
         """
         Method called when the cached function is called.
 
@@ -239,14 +241,21 @@ class Cache:
             cached_func()
 
         :param args: Arguments to the underlying function.
+        :param force_cache: Attempt to retrieve cached results, raising
+        ``KeyError`` if they do not exist
+        :param force_run: Run the function, ignoring any cached values
         :param kwargs: Keyword arguments to the underlying function.
         :return: The (cached) result of the underlying function.
         """
-        key = self._cache_provider.make_key(self, self._func, *args, **kwargs)
+        key = self._cache_provider.make_key(self._func, *args, **kwargs)
 
         try:
+            if force_run:
+                raise KeyError("cache ignored due to force_run")
             return self._cache_provider.get(key)
-        except KeyError:
+        except KeyError as ex:
+            if force_cache:
+                raise ex
             value = self._func(*args, **kwargs)  # execute the function, with arguments
             self._cache_provider.set(key, value)
             return value
