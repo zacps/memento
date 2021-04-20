@@ -4,57 +4,103 @@ generated and dispatched to tasks, we need some way to interact
 with the user code
 """
 
-from memento.configurations import run
+from typing import Any, Callable
+
+import datetime
 
 
 class Context:
     """
-    Creates the context which interacts with the user
-
-    ### Example
-
-    ```python
-    context_example = Context()
-    context_example.results(tasks)
-    context_example.collect_metrics()
-    context_example.checkpoint()
-    context_example.restore(2)
-    ```
+    The ``Context`` makes MEMENTO's utilities like checkpointing, metrics,
+    progress reporting, and more available to tasks.
     """
 
-    def __init__(self, context=None):
+    def __init__(self, key):
         """
-        Initalizes the context
+        Each context is associated with exactly one task.
         """
-        self.context = context
-        self.results(run(context))
+        self.key = key
 
-    def results(self, task):
-        """
-        return class from Memento.run which wild hold
-        the results of the tasks themselves and any metadata we
-        want to add
-        """
-        self.task = task
-        self.task_results = self.task.result()
-        self.metadata = self.task.metadata()
-
-    def collect_metrics(self):
+    def collect_metrics(self, *metrics: Callable):
         """
         Gets the new metrics to start next experiment
         """
-        return self.collect_metrics()
+        raise NotImplementedError("feature: metrics")
 
-    def checkpoint(self):
+    def progress(self, delta, total=None):  # pylint: disable=no-self-use
         """
-        Allows the user to revert the directory to any point in
-        the past that was ‘commit’ to save the changes.
-        """
-        return self.checkpoint()
+        Update the progress estimate, changing the current progress by ``delta``.
 
-    def restore(self, checkpoint):
+        The first call to this should (if possible) estimate the total amount of work.
+        This can later be refined by passing a different value of ``total``.
         """
-        Gets the data saved at the checkpoint the user want to retrieve
-        from
+        raise NotADirectoryError("feature: progress")
+
+    # Whether or not we checkpoint a particular value or not will depend on
+    # if we implement full program checkpointing or not.
+    def checkpoint(self, data: Any):
         """
-        return self.restore(checkpoint)
+        Save the current state of the task.
+        """
+        raise NotImplementedError("feature: checkpoints")
+
+    def restore(self) -> Any:
+        """
+        Restore the state of the task from the last checkpoint.
+        """
+        raise NotImplementedError("feature: checkpoints")
+
+
+class MemoryUsage:  # pylint: disable=too-few-public-methods
+    """
+    Memory usage statistics recorded from a task.
+    """
+
+    virtual_peak: int
+    hardware_peak: int
+
+    def __init__(self, virtual_peak: int, hardware_peak: int):
+        self.virtual_peak = virtual_peak
+        self.hardware_peak = hardware_peak
+
+
+class Result:  # pylint: disable=too-few-public-methods
+    """
+    The result from a single task. This contains the value returned from the experiment, ``inner``,
+    and metadata about the task run.
+    """
+
+    inner: Any
+
+    metrics: Any
+
+    "The start time of the task."
+    start_time: datetime.timedelta
+
+    "The task's runtime, measured on the wall clock."
+    runtime: datetime.timedelta
+    "The task's runtime, measured by the CPU"
+    cpu_time: datetime.timedelta
+    "Memory usage statistics"
+    memory: MemoryUsage
+
+    "Whether or not this result was retrieved from cache."
+    was_cached: bool
+
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        inner,
+        metrics,
+        start_time: datetime.timedelta,
+        runtime: datetime.timedelta,
+        cpu_time: datetime.timedelta,
+        memory: MemoryUsage,
+        was_cached: bool,
+    ):
+        self.inner = inner
+        self.metrics = metrics
+        self.start_time = start_time
+        self.runtime = runtime
+        self.cpu_time = cpu_time
+        self.memory = memory
+        self.was_cached = was_cached
