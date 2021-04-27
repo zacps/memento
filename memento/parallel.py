@@ -78,7 +78,7 @@ class _Task:
 
     def run(self):
         """ Runs this task and returns it's result. """
-        return cloudpickle.loads(self._task)()
+        return cloudpickle.dumps(cloudpickle.loads(self._task)())
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
@@ -157,11 +157,12 @@ class TaskManager:
             processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
         ) as pool:
             results = pool.map(_worker, self._tasks)
+
         self._tasks.clear()
 
         # At this point results is a list of tuples -> (task_index, task_result) so we can sort
 
         results.sort(key=lambda t: t[0])
-        results = [item[1] for item in results]
+        results = [cloudpickle.loads(item[1]) for item in results]
 
         return results
