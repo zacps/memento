@@ -3,7 +3,7 @@ from memento.memento import Memento
 
 class TestMemento:
     def test_memento(self):
-        def func(config):
+        def func(context, config):
             return config.k1
 
         memento = Memento(func)
@@ -12,7 +12,7 @@ class TestMemento:
         assert results == ["v1", "v2", "v3"]
 
     def test_dry_run(self):
-        def func(config):
+        def func(context, config):
             raise Exception("should not be called")
 
         memento = Memento(func)

@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 import datetime
 
+from memento.configurations import Config
+
 
 class Context:
     """
@@ -70,12 +72,14 @@ class Result:  # pylint: disable=too-few-public-methods
     and metadata about the task run.
     """
 
+    config: Config
+
     inner: Any
 
     metrics: Any
 
     "The start time of the task."
-    start_time: datetime.timedelta
+    start_time: datetime.datetime
 
     "The task's runtime, measured on the wall clock."
     runtime: datetime.timedelta
@@ -89,6 +93,7 @@ class Result:  # pylint: disable=too-few-public-methods
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
+        config,
         inner,
         metrics,
         start_time: datetime.timedelta,
@@ -97,6 +102,7 @@ class Result:  # pylint: disable=too-few-public-methods
         memory: MemoryUsage,
         was_cached: bool,
     ):
+        self.config = config
         self.inner = inner
         self.metrics = metrics
         self.start_time = start_time
