@@ -19,6 +19,7 @@ mypy = "^0.812"
 [tool.pylint.miscellaneous]
 # Allow TODO notes
 notes = "FIXME,XXX"
+disable = ["too-many-instance-attributes", "too-few-public-methods"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

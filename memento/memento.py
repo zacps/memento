@@ -5,19 +5,19 @@ Contains `Memento`, the main entry point of MEMENTO.
 import functools
 import logging
 from datetime import datetime
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 import cloudpickle
 
 from memento.parallel import TaskManager, delayed
-from memento.caching import Cache, FileSystemCacheProvider
+from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
 from memento.task_interface import Context, Result
 
 logger = logging.getLogger(__name__)
 
 
-class Memento:  # pylint: disable=R0903
+class Memento:
     """
     The main class of MEMENTO. This is the 'front end' of MEMENTO with which you can run a
     configuration matrix and retrieve results from your experiments.
@@ -57,7 +57,7 @@ class Memento:  # pylint: disable=R0903
             key = _key(self.func, config)
             if not cache.contains(key):
                 context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config)))
+                manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
                 ran.add(config)
 
         manager.run()
@@ -79,11 +79,12 @@ class Memento:  # pylint: disable=R0903
 
 def _wrapper(func: Callable) -> Callable:
     """
-    Wrapper which runs in the task thread. This is responsible for collecting performance metrics and writing to the cache.
+    Wrapper which runs in the task thread. This is responsible for collecting performance metrics
+    and writing to the cache.
     """
 
     @functools.wraps(func)
-    def inner(context: Context, config: Config) -> Result:
+    def inner(context: Context, config: Config, cache: CacheProvider) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -101,7 +102,7 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
 
-        FileSystemCacheProvider().set(context.key, result)
+        cache.set(context.key, result)
 
         return result
 
