@@ -79,7 +79,7 @@ class Result:  # pylint: disable=too-few-public-methods
     metrics: Any
 
     "The start time of the task."
-    start_time: datetime.timedelta
+    start_time: datetime.datetime
 
     "The task's runtime, measured on the wall clock."
     runtime: datetime.timedelta

@@ -101,6 +101,10 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
 
+        FileSystemCacheProvider().set(context.key, result)
+
+        return result
+
     return inner
 
 
