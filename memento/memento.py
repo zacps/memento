@@ -10,7 +10,7 @@ from typing import Any, Callable, List, Optional
 import cloudpickle
 
 from memento.parallel import TaskManager, delayed
-from memento.caching import Cache, FileSystemCacheProvider
+from memento.caching import Cache, FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
 from memento.task_interface import Context, Result
 
@@ -57,7 +57,7 @@ class Memento:  # pylint: disable=R0903
             key = _key(self.func, config)
             if not cache.contains(key):
                 context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config)))
+                manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
                 ran.add(config)
 
         manager.run()
@@ -83,7 +83,7 @@ def _wrapper(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(context: Context, config: Config) -> Result:
+    def inner(context: Context, config: Config, cache: CacheProvider) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -101,7 +101,7 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
 
-        FileSystemCacheProvider().set(context.key, result)
+        cache.set(context.key, result)
 
         return result
 

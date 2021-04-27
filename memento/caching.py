@@ -188,13 +188,13 @@ class FileSystemCacheProvider(CacheProvider):
         with self as database:
             rows = database.execute(self._sql_select, (key,)).fetchall()
             if rows:
-                return rows[0][0]
+                return cloudpickle.loads(rows[0][0])
 
             raise KeyError(f"Key '{key}' not in cache")
 
     def set(self, key: str, item) -> None:
         with self as database:
-            database.execute(self._sql_insert, (key, item))
+            database.execute(self._sql_insert, (key, cloudpickle.dumps(item)))
             database.commit()
 
     def contains(self, key: str) -> bool:

@@ -9,7 +9,7 @@ class TestMemento:
         memento = Memento(func)
         matrix = {"parameters": {"k1": ["v1", "v2", "v3"]}}
         results = memento.run(matrix)
-        assert results == ["v1", "v2", "v3"]
+        assert [result.inner for result in results] == ["v1", "v2", "v3"]
 
     def test_dry_run(self):
         def func(context, config):
