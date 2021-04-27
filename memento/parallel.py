@@ -79,7 +79,6 @@ class _Task:
     def run(self):
         """ Runs this task and returns it's result. """
         return cloudpickle.dumps(cloudpickle.loads(self._task)())
-        # return cloudpickle.loads(self._task)()
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
@@ -117,13 +116,12 @@ class TaskManager:
 
     """
 
-    def __init__(self, workers: int = None, max_tasks_per_worker: int = None, serial: bool = False):
+    def __init__(self, workers: int = None, max_tasks_per_worker: int = None):
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[_Task] = []
         self._task_index = 0
-        self._serial = serial
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
@@ -155,14 +153,10 @@ class TaskManager:
     def run(self):
         """ Runs this task manager's tasks and returns the results. """
         heapify(self._tasks)
-        if self._serial:
-            print('Executing tasks in serial mode')
-            results = map(_worker, self._tasks)
-        else:
-            with Pool(
-                processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
-            ) as pool:
-                results = pool.map(_worker, self._tasks)
+        with Pool(
+            processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
+        ) as pool:
+            results = pool.map(_worker, self._tasks)
 
         self._tasks.clear()
 
