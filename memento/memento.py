@@ -2,12 +2,17 @@
 Contains `Memento`, the main entry point of MEMENTO.
 """
 
+import functools
 import logging
+from datetime import datetime
 from typing import Any, Callable, List, Optional
 
+import cloudpickle
+
 from memento.parallel import TaskManager, delayed
-from memento.caching import Cache
-from memento.configurations import configurations
+from memento.caching import Cache, FileSystemCacheProvider
+from memento.configurations import configurations, Config
+from memento.task_interface import Context, Result
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +29,7 @@ class Memento:  # pylint: disable=R0903
         """
         self.func = func
 
-    def run(self, matrix: dict, dry_run: bool = False) -> Optional[List[Any]]:
+    def run(self, matrix: dict, dry_run: bool = False) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
 
@@ -43,31 +48,66 @@ class Memento:  # pylint: disable=R0903
             logger.info("Exiting due to dry run")
             return None
 
-        cache = Cache(self.func)
+        cache = FileSystemCacheProvider(key=_key)
         manager = TaskManager()
 
-        results = [None] * len(configs)
+        # Run tasks for which we have no cached result
+        ran = set()
+        for config in configs:
+            key = _key(self.func, config)
+            if not cache.contains(key):
+                context = Context(key)
+                manager.add_task(delayed(_wrapper(self.func)(context, config)))
+                ran.add(config)
 
-        for i, config in enumerate(configs):
-            try:
-                results[i] = cache(config, force_cache=True)
-            except KeyError:
-                # TODO: We should pass in a context object so the user's code can interact with
-                # memento in a task.
-                manager.add_task(delayed(cache)(config))
+        manager.run()
 
-        n_cached = len([result for result in results if result is not None])
-        logger.info("%s/%s results retrieved from cache", n_cached, len(configs))
+        results = [cache.get(_key(self.func, config)) for config in configs]
 
-        others = manager.run()[::-1]
+        for result in results:
+            if result.config in ran:
+                result.was_cached = False
 
-        for i in range(len(results)):  # pylint: disable=C0200
-            if results[i] is None:
-                results[i] = others.pop()
+        logger.info(
+            "%s/%s results retrieved from cache",
+            len(configs) - len(ran),
+            len(configs),
+        )
 
-        # TODO: We should return an object which provides metadata about this run here.
-        # Things we want:
-        # * Was a particular result cached or run?
-        # * How long did a result take to run?
-        # * What was the memory usage of a particular run?
         return results
+
+
+def _wrapper(func: Callable) -> Callable:
+    """
+    Wrapper which runs in the task thread. This is responsible for collecting performance metrics and writing to the cache.
+    """
+
+    @functools.wraps(func)
+    def inner(context: Context, config: Config) -> Result:
+        start_time = datetime.now()
+
+        inner = func(context, config)
+
+        runtime = datetime.now() - start_time
+
+        result = Result(
+            config,
+            inner,
+            None,
+            start_time=start_time,
+            runtime=runtime,
+            cpu_time=None,
+            memory=None,
+            was_cached=True,
+        )
+
+        FileSystemCacheProvider().set(context.key, result)
+
+        return result
+
+    return inner
+
+
+def _key(func: Callable, config: Config):
+    # The default behaviour caches on all arguments, including the config object.
+    return cloudpickle.dumps({"function": func, "args": [config]})
