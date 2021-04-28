@@ -2,6 +2,7 @@
 Contains classes for progress reporting.
 """
 from abc import ABC, abstractmethod
+from typing import Union, TextIO
 
 
 class NotificationProvider(ABC):
@@ -67,17 +68,23 @@ class FileSystemNotificationProvider(DefaultNotificationProvider):
     Writes notifications to a file.
     """
 
-    def __init__(self, filename: str = None):
+    def __init__(self, filepath: Union[TextIO, str] = None):
         """
         Creates a FileSystemNotificationProvider.
 
-        :param filename: the file to write notifications to, opened in append mode.
+        :param filepath: the filepath to write notifications to, opened in append mode,
+        or a file-like object. Defaults to 'logs.txt'.
         """
-        self._filename = filename or "logs.txt"
+        self._filepath = filepath or "logs.txt"
+        self._is_file = not isinstance(filepath, str)
 
     def _write(self, message: str):
-        with open(self._filename, "a") as file:
-            file.write(f"{message}\n")
+        s = f"{message}\n"
+        if self._is_file:
+            self._filepath.write(s)
+        else:
+            with open(self._filepath, "a") as file:
+                file.write(s)
 
     def job_completion(self):
         self._write("Job completed")
