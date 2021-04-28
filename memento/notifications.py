@@ -28,12 +28,12 @@ class NotificationProvider(ABC):
         """
 
 
-class DefaultNotificationProvider(NotificationProvider):
+class ConsoleNotificationProvider(NotificationProvider):
     def job_completion(self):
-        pass
+        print("Job completed")
 
     def task_completion(self):
-        pass
+        print("All jobs completed")
 
     def task_failure(self):
-        pass
+        print("Job failed")
