@@ -1,4 +1,6 @@
 import time
+import os
+import tempfile
 
 from sqlite3 import Connection
 from unittest.mock import Mock
@@ -132,6 +134,17 @@ class TestMemoryCacheProvider:
 
 
 class TestFileSystemCacheProvider:
+    def setup_method(self, method):
+        # This is ugly, but sqlite3 doesn't seem to accept a file handle directly, so we need to
+        # create a temporary file, close it (to not run afoul of locking on windows), then manually
+        # remove it after we're done.
+        file = tempfile.NamedTemporaryFile(suffix="_memento.cache", delete=False)
+        self._filepath = os.path.abspath(file.name)
+        file.close()
+
+    def teardown_method(self, method):
+        os.unlink(self._filepath)
+
     def test_file_system_cache_provider_get_works_when_data_in_cache(self):
         connection = Mock(spec_set=Connection)
         connection.execute().fetchall.return_value = [[cloudpickle.dumps("value")]]

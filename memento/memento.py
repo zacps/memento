@@ -4,6 +4,7 @@ Contains `Memento`, the main entry point of MEMENTO.
 
 import functools
 import logging
+import os
 from datetime import datetime
 from typing import Callable, List, Optional
 
@@ -13,6 +14,7 @@ from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
 from memento.task_interface import Context, Result
+from memento.exceptions import CacheMiss
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +31,24 @@ class Memento:
         """
         self.func = func
 
-    def run(self, matrix: dict, dry_run: bool = False) -> Optional[List[Result]]:
+    def run(  # pylint: disable=too-many-arguments
+        self,
+        matrix: dict,
+        dry_run: bool = False,
+        force_run: bool = False,
+        force_cache: bool = False,
+        cache_path: str = None,
+    ) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
 
         :param matrix: A configuration matrix
         :param dry_run: Do not actually run experiments, just log what would be run
+        :param force_run: Ignore the cache and re-run all experiments
+        :param force_cache: Raise ``exceptions.CacheMiss`` if an experiment is not found in the
+            cache
+        :param cache_path: Path to save results. This defaults to the current working directory and
+            can also be specified using ``MEMENTO_CACHE_PATH``.
         :returns: A list of results from your experiments.
         """
 
@@ -48,17 +62,26 @@ class Memento:
             logger.info("Exiting due to dry run")
             return None
 
-        cache = FileSystemCacheProvider(key=_key)
+        cache = FileSystemCacheProvider(
+            filepath=(
+                cache_path
+                or os.environ.get("MEMENTO_CACHE_PATH", None)
+                or "memento.sqlite"
+            ),
+            key=_key,
+        )
         manager = TaskManager()
 
         # Run tasks for which we have no cached result
-        ran = set()
+        ran = []
         for config in configs:
             key = _key(self.func, config)
-            if not cache.contains(key):
+            if not cache.contains(key) or force_run:
+                if force_cache:
+                    raise CacheMiss(config)
                 context = Context(key)
                 manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
-                ran.add(config)
+                ran.append(config)
 
         manager.run()
 
@@ -101,7 +124,6 @@ def _wrapper(func: Callable) -> Callable:
             memory=None,
             was_cached=True,
         )
-
         cache.set(context.key, result)
 
         return result

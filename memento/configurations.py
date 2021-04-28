@@ -84,13 +84,15 @@ class Config:
         try:
             return self._dict[name]
         except KeyError:
-            raise AttributeError from None
-
-    def _set(self, name, value):
-        self._dict[name] = value
+            raise AttributeError(name) from None
 
     def __repr__(self):
         return self._dict.__repr__()
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, type(self)):
+            return False
+        return self._dict == o._dict and self.settings == o.settings
 
     def asdict(self):
         """
