@@ -6,6 +6,7 @@ from contextlib import redirect_stdout, redirect_stderr, contextmanager
 from functools import wraps
 from heapq import heapify
 from multiprocessing.pool import Pool
+from .notifications import DefaultNotificationProvider, NotificationProvider
 from typing import Callable, List, TextIO, Iterable
 
 import cloudpickle
@@ -60,11 +61,13 @@ class _PrefixedStream:
 
 
 class _Task:
-    def __init__(self, identifier: str, index: int, task: Callable, priority: int):
+    def __init__(self, identifier: str, index: int, task: Callable, priority: int,
+                 notification_provider: NotificationProvider):
         self._identifier = identifier
         self._task = cloudpickle.dumps(task)
         self._priority = priority
         self._index = index
+        self._notification_provider = cloudpickle.dumps(notification_provider)
 
     @property
     def identifier(self):
@@ -78,7 +81,15 @@ class _Task:
 
     def run(self):
         """ Runs this task and returns it's result. """
-        return cloudpickle.loads(self._task)()
+        notification_provider = cloudpickle.loads(self._notification_provider)
+
+        try:
+            task_return = cloudpickle.loads(self._task)()
+            notification_provider.task_completion()
+            return task_return
+        except Exception as e:
+            notification_provider.task_failure()
+            raise e
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
@@ -116,16 +127,18 @@ class TaskManager:
 
     """
 
-    def __init__(self, workers: int = None, max_tasks_per_worker: int = None):
+    def __init__(self, workers: int = None, max_tasks_per_worker: int = None,
+                 notification_provider: NotificationProvider = DefaultNotificationProvider):
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[_Task] = []
         self._task_index = 0
+        self._notification_provider = notification_provider
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
-        task = _Task(f"Task {self._id_count}", self._task_index, callable_, priority_)
+        task = _Task(f"Task {self._id_count}", self._task_index, callable_, priority_, self._notification_provider)
         self._task_index += 1
         return task
 
@@ -144,7 +157,7 @@ class TaskManager:
         self._tasks.append(task)
 
     def add_tasks(
-        self, callables: Iterable[Callable], priority: int = TASK_PRIORITY_HIGH
+            self, callables: Iterable[Callable], priority: int = TASK_PRIORITY_HIGH
     ):
         """ Adds the given tasks to the end of this task manager's queue. """
         for callable_ in callables:
@@ -154,7 +167,7 @@ class TaskManager:
         """ Runs this task manager's tasks and returns the results. """
         heapify(self._tasks)
         with Pool(
-            processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
+                processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
         ) as pool:
             results = pool.map(_worker, self._tasks)
         self._tasks.clear()
@@ -163,5 +176,7 @@ class TaskManager:
 
         results.sort(key=lambda t: t[0])
         results = [item[1] for item in results]
+
+        self._notification_provider.job_completion()
 
         return results
