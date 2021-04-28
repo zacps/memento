@@ -128,13 +128,13 @@ class TaskManager:
     """
 
     def __init__(self, workers: int = None, max_tasks_per_worker: int = None,
-                 notification_provider: NotificationProvider = DefaultNotificationProvider):
+                 notification_provider: NotificationProvider = None):
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[_Task] = []
         self._task_index = 0
-        self._notification_provider = notification_provider
+        self._notification_provider = notification_provider or DefaultNotificationProvider()
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1

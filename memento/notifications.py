@@ -1,5 +1,5 @@
 """
-
+Contains classes for progress reporting.
 """
 from abc import ABC, abstractmethod
 
@@ -7,14 +7,11 @@ from abc import ABC, abstractmethod
 class NotificationProvider(ABC):
     """
     Abstract base class for implementing a notification provider, allowing different
-    forms of notifications to be raised.
-
-    Provides the interface that all cache providers must adhere to.
-
-    Must be used as the parent class of a cache provider class.
+    forms of notifications to be raised. Generally, you should inherit from
+    DefaultNotificationProvider if you want to
 
     ..
-        class CustomCacheProvider(CacheProvider):
+        class CustomNotificationProvider(NotificationProvider)
     """
 
     @abstractmethod
