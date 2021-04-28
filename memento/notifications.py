@@ -26,3 +26,14 @@ class NotificationProvider(ABC):
         """
 
         """
+
+
+class DefaultNotificationProvider(NotificationProvider):
+    def job_completion(self):
+        pass
+
+    def task_completion(self):
+        pass
+
+    def task_failure(self):
+        pass
