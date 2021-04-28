@@ -6,12 +6,9 @@ from abc import ABC, abstractmethod
 
 class NotificationProvider(ABC):
     """
-    Abstract base class for implementing a notification provider, allowing different
-    forms of notifications to be raised. Generally, you should inherit from
-    DefaultNotificationProvider if you want to
-
-    ..
-        class CustomNotificationProvider(NotificationProvider)
+    Abstract base class for implementing a notification provider, allowing notifications to be
+    raised to different locations. Generally, you should inherit from
+    :class:`DefaultNotificationProvider` to avoid having to implement every method.
     """
 
     @abstractmethod
@@ -34,6 +31,12 @@ class NotificationProvider(ABC):
 
 
 class DefaultNotificationProvider(NotificationProvider):
+    """
+    Default :class:`NotificationProvider` implementation that takes no actions when an event
+    occurs. This is the class you should extend if you want to create your own custom
+    notification provider.
+    """
+
     def job_completion(self):
         pass
 
@@ -45,6 +48,10 @@ class DefaultNotificationProvider(NotificationProvider):
 
 
 class ConsoleNotificationProvider(DefaultNotificationProvider):
+    """
+    Writes notification to the console (stdout).
+    """
+
     def job_completion(self):
         print("Job completed")
 
@@ -56,12 +63,21 @@ class ConsoleNotificationProvider(DefaultNotificationProvider):
 
 
 class FileSystemNotificationProvider(DefaultNotificationProvider):
+    """
+    Writes notifications to a file.
+    """
+
     def __init__(self, filename: str = None):
+        """
+        Creates a FileSystemNotificationProvider.
+
+        :param filename: the file to write notifications to, opened in append mode.
+        """
         self._filename = filename or "logs.txt"
 
     def _write(self, message: str):
-        with open(self._filename, 'a') as f:
-            f.write(f'{message}\n')
+        with open(self._filename, "a") as file:
+            file.write(f"{message}\n")
 
     def job_completion(self):
         self._write("Job completed")
