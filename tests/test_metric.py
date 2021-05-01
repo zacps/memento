@@ -28,3 +28,17 @@ class TestMetric:
         actual_df = metric.dump_to_df()
 
         assert expected_df.equals(actual_df)
+
+    def test_metric_records_mean_for_float_values(self):
+        metric = Metric()
+        metric.record(value=1.0)
+        metric.record(value=2.0)
+
+        assert metric.mean() == 1.5
+
+    def test_metric_records_mean_for_int_values(self):
+        metric = Metric()
+        metric.record(value=1)
+        metric.record(value=2)
+
+        assert metric.mean() == 1.5
