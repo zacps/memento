@@ -42,3 +42,33 @@ class TestMetric:
         metric.record(value=2)
 
         assert metric.mean() == 1.5
+
+    def test_metric_records_median_for_odd_number_values(self):
+        metric = Metric()
+        metric.record(value=2.0)
+        metric.record(value=1.0)
+        metric.record(value=5.0)
+
+        assert metric.median() == 2.0
+
+
+    def test_metric_records_median_for_even_number_values(self):
+        metric = Metric()
+        metric.record(value=2.0)
+        metric.record(value=1.0)
+        metric.record(value=5.0)
+        metric.record(value=3.0)
+
+        assert metric.median() == 2.5
+
+    def test_metric_records_stdev(self):
+        metric = Metric()
+        metric.record(value=1.0)
+        metric.record(value=1.0)
+        metric.record(value=1.0)
+
+        assert metric.stdev() == 0.0
+
+        metric.record(value=2.0)
+
+        assert metric.stdev() == 0.5

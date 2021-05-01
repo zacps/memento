@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from time import time
-from typing import Any, Union
+import statistics
 
 import pandas as pd
 
@@ -17,6 +17,7 @@ class MetricDataPoint:
 
 class Metric(object):
     _data_points: list[MetricDataPoint]
+
     def __init__(self):
         self._data_points = []
 
@@ -28,5 +29,11 @@ class Metric(object):
     def dump_to_df(self):
         return pd.DataFrame(self._data_points)
 
-    def mean(self):
-        return sum([x.value for x in self._data_points]) / len(self._data_points)
+    def mean(self) -> float:
+        return statistics.mean([x.value for x in self._data_points])
+
+    def median(self) -> float:
+        return statistics.median([x.value for x in self._data_points])
+
+    def stdev(self) -> float:
+        return statistics.stdev([x.value for x in self._data_points])
