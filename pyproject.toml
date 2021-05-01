@@ -6,8 +6,9 @@ authors = ["Zac Pullar-Strecker <zacmps@gmail.com>", "Joshua de Wet", "Liam Scot
 license = "MIT/Apache 2.0"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7.1"
 cloudpickle = "^1.6.0"
+pandas = "^1.2.4"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
