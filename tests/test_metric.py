@@ -1,6 +1,8 @@
 from memento.metric import Metric, MetricDataPoint
 import pandas as pd
 
+from memento.parallel import TaskManager, delayed
+
 
 class TestMetric:
     def test_metric_creates_singleton_instance(self):
@@ -12,10 +14,34 @@ class TestMetric:
         assert metric1 is not metric3
 
     def test_metric_creates_singleton_instance_in_parallel(self):
-        metric1 = Metric("parallel_1")
-        metric2 = Metric("parallel_2")
+        def task_1():
+            metric1 = Metric("parallel")
+            metric1.record(1.0, 1.0)
+            metric1.record(2.0, 2.0)
+            metric1.record(3.0, 3.0)
 
-        assert True is False
+        def task_2():
+            metric1 = Metric("parallel")
+            metric1.record(4.0, 4.0)
+            metric1.record(5.0, 5.0)
+            metric1.record(6.0, 6.0)
+
+        # Metric("parallel")  # Ensure that the metric exists beforehand
+        manager = TaskManager(max_tasks_per_worker=1)
+        manager.add_tasks([delayed(task_1)(), delayed(task_2)()])
+        manager.run()
+
+        expected_dataframe = pd.DataFrame([
+            MetricDataPoint(1.0, 1.0),
+            MetricDataPoint(2.0, 2.0),
+            MetricDataPoint(3.0, 3.0),
+            MetricDataPoint(4.0, 1.0),
+            MetricDataPoint(5.0, 2.0),
+            MetricDataPoint(6.0, 3.0),
+        ])
+        actual_dataframe = Metric("parallel").dump_to_df()
+
+        assert expected_dataframe.equals(actual_dataframe)
 
     def test_metric_records_information_to_different_metrics(self):
         metric1 = Metric("test_metric_records_information_to_different_metrics_1")
