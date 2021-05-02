@@ -21,6 +21,9 @@ class Metric(object):
     def __init__(self):
         self._data_points = []
 
+    def _get_values(self) -> list[float]:
+        return [x.value for x in self._data_points]
+
     def record(self, value: float, timestamp: time = None):
         timestamp = timestamp or time()
         data = MetricDataPoint(value, timestamp)
@@ -30,10 +33,10 @@ class Metric(object):
         return pd.DataFrame(self._data_points)
 
     def mean(self) -> float:
-        return statistics.mean([x.value for x in self._data_points])
+        return statistics.mean(self._get_values())
 
     def median(self) -> float:
-        return statistics.median([x.value for x in self._data_points])
+        return statistics.median(self._get_values())
 
     def stdev(self) -> float:
-        return statistics.stdev([x.value for x in self._data_points])
+        return statistics.stdev(self._get_values())
