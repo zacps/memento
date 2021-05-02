@@ -1,3 +1,6 @@
+"""
+Contains classes for implementing metric logging.
+"""
 from dataclasses import dataclass
 from time import time
 import statistics
@@ -10,6 +13,7 @@ class MetricDataPoint:
     An internal class for the Metric class, used to generate Pandas dataframes.
     Should NOT be called from user code.
     """
+
     time: time
     value: float
 
@@ -23,7 +27,7 @@ class MetricDataPoint:
         self.time = timestamp
 
 
-class Metric(object):
+class Metric():
     """
     A class representing some metric within the program.
 
@@ -45,6 +49,7 @@ class Metric(object):
         my_metric.median()
         my_metric.stdev()
     """
+
     _instances: dict
     _data_points: list[MetricDataPoint]
 
@@ -84,7 +89,7 @@ class Metric(object):
 
     def _setup(self) -> None:
         """
-        The setup function for this class, replaces ``__init__()`` as that should not exist on a singleton.
+        Setup function for this class. Replaces ``__init__()`` as that doesn't exist on a singleton.
 
         Run after the metric object is created.
         :return: None
