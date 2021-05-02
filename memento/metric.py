@@ -16,9 +16,26 @@ class MetricDataPoint:
 
 
 class Metric(object):
+    _instances: dict
     _data_points: list[MetricDataPoint]
 
-    def __init__(self):
+    # Creates a singleton, without having to call a .get_instance() method
+    # Can just call obj = Metric() like normal, but will always create 1 instance
+    def __new__(cls, metric_name: str):
+        try:
+            return cls._instances[metric_name]
+        except AttributeError:
+            metric = super(Metric, cls).__new__(cls)
+            cls._instances = {metric_name: metric}
+            cls._setup(metric)
+            return metric
+        except KeyError:
+            metric = super(Metric, cls).__new__(cls)
+            cls._instances[metric_name] = metric
+            cls._setup(metric)
+            return metric
+
+    def _setup(self):
         self._data_points = []
 
     def _get_values(self) -> list[float]:
