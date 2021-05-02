@@ -12,20 +12,20 @@ class TestMetric:
         assert metric1 is not metric3
 
     def test_metric_creates_singleton_instance_in_parallel(self):
-        metric1 = Metric()
-        metric2 = Metric()
+        metric1 = Metric("parallel_1")
+        metric2 = Metric("parallel_2")
 
         assert True is False
 
     def test_metric_records_information_to_different_metrics(self):
         metric1 = Metric("test_metric_records_information_to_different_metrics_1")
         metric2 = Metric("test_metric_records_information_to_different_metrics_2")
-        data1 = [MetricDataPoint("val1", 1.0),
-                MetricDataPoint("val2", 2.0),
-                MetricDataPoint("val3", 3.0)]
-        data2 = [MetricDataPoint("val4", 1.0),
-                 MetricDataPoint("val5", 2.0),
-                 MetricDataPoint("val6", 3.0)]
+        data1 = [MetricDataPoint(1.0, 1.0),
+                 MetricDataPoint(2.0, 2.0),
+                 MetricDataPoint(3.0, 3.0)]
+        data2 = [MetricDataPoint(4.0, 1.0),
+                 MetricDataPoint(5.0, 2.0),
+                 MetricDataPoint(6.0, 3.0)]
 
         for datapoint in data1:
             metric1.record(datapoint.value, datapoint.time)
@@ -62,7 +62,6 @@ class TestMetric:
         metric.record(value=5.0)
 
         assert metric.median() == 2.0
-
 
     def test_metric_records_median_for_even_number_values(self):
         metric = Metric("test_metric_records_median_for_even_number_values")
