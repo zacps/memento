@@ -27,7 +27,7 @@ class MetricDataPoint:
         self.time = timestamp
 
 
-class Metric():
+class Metric:
     """
     A class representing some metric within the program.
 
@@ -52,10 +52,11 @@ class Metric():
 
     _instances: dict
     _data_points: list[MetricDataPoint]
+    _x_axis_generator: iter
 
     # Creates a singleton, without having to call a .get_instance() method
     # Can just call obj = Metric("name") like normal, but will always create only 1 instance
-    def __new__(cls, metric_name: str):
+    def __new__(cls, metric_name: str, x_axis_generator: iter = None):
         """
         Creates a Metric object, which is a singleton.
 
@@ -78,23 +79,29 @@ class Metric():
         except AttributeError:
             metric = super(Metric, cls).__new__(cls)
             cls._instances = {metric_name: metric}
-            cls._setup(metric)
+            cls._setup(metric, x_axis_generator)
             return metric
         # When the specific metric name doesn't exist in the dict
         except KeyError:
             metric = super(Metric, cls).__new__(cls)
             cls._instances[metric_name] = metric
-            cls._setup(metric)
+            cls._setup(metric, x_axis_generator)
             return metric
 
-    def _setup(self) -> None:
+    def _setup(self, x_axis_generator: iter) -> None:
         """
         Setup function for this class. Replaces ``__init__()`` as that doesn't exist on a singleton.
 
         Run after the metric object is created.
         :return: None
         """
+
+        def timestamp_generator() -> time:
+            while True:
+                yield time()
+
         self._data_points = []
+        self._x_axis_generator = x_axis_generator or timestamp_generator()
 
     def _get_values(self) -> list[float]:
         """
@@ -103,14 +110,14 @@ class Metric():
         """
         return [x.value for x in self._data_points]
 
-    def record(self, value: float, timestamp: time = None) -> None:
+    def record(self, value: float, x_axis: float = None) -> None:
         """
         Records a value to a specific metric, along with a timestamp.
         :param value: The (float) value to be recorded.
         :param timestamp: An optional timestamp value. Will be generated if not supplied.
         :return: None
         """
-        timestamp = timestamp or time()
+        timestamp = x_axis or next(self._x_axis_generator)
         data = MetricDataPoint(value, timestamp)
         self._data_points.append(data)
 
