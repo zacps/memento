@@ -3,6 +3,9 @@ Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` typ
 """
 
 import itertools
+from typing import Dict, List
+
+RESERVED_NAMES = ["settings", "runtime", "overrides"]
 
 
 def configurations(matrix: dict) -> "Configurations":
@@ -18,12 +21,15 @@ def configurations(matrix: dict) -> "Configurations":
     if "parameters" not in matrix:
         raise ValueError("matrix must contain a 'parameters' key")
 
-    if "settings" in matrix["parameters"]:
-        raise ValueError("settings is a reserved parameter name")
+    for name in RESERVED_NAMES:
+        if name in matrix["parameters"]:
+            raise ValueError(f"`{name}`` is a reserved parameter name")
 
     parameters = matrix["parameters"]
     settings = matrix.get("settings", {})
     exclude = matrix.get("exclude", [])
+    runtime = matrix.get("runtime", {})
+    # FIXME: Add overrides
 
     # Generate the cartesian product of all parameters
     elements = itertools.product(*parameters.values())
@@ -34,7 +40,7 @@ def configurations(matrix: dict) -> "Configurations":
             if all(getattr(config, k, _Never) == v for k, v in ex.items()):
                 del configs[i]
 
-    return Configurations(configs, settings)
+    return Configurations(configs, settings, runtime)
 
 
 class Configurations:
@@ -44,9 +50,10 @@ class Configurations:
     Global settings can be accessed via `configurations.settings`.
     """
 
-    def __init__(self, configs, settings):
+    def __init__(self, configs: List["Config"], settings: Dict, runtime: Dict):
         self.configurations = configs
         self.settings = settings
+        self.runtime = runtime
 
         # Create back-references
         for config in self.configurations:

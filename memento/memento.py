@@ -4,6 +4,7 @@ Contains `Memento`, the main entry point of MEMENTO.
 
 import functools
 import logging
+from memento.slurm import run_slurm
 import os
 from datetime import datetime
 from typing import Callable, List, Optional
@@ -38,6 +39,7 @@ class Memento:
         force_run: bool = False,
         force_cache: bool = False,
         cache_path: str = None,
+        slurm: bool = False,  # FIXME: Autodetect if running in a HPC environment
     ) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
@@ -74,16 +76,31 @@ class Memento:
 
         # Run tasks for which we have no cached result
         ran = []
-        for config in configs:
-            key = _key(self.func, config)
-            if not cache.contains(key) or force_run:
-                if force_cache:
-                    raise CacheMiss(config)
-                context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
-                ran.append(config)
+        if slurm:
+            args = []
+            for config in configs:
+                key = _key(self.func, config)
+                if not cache.contains(key) or force_run:
+                    if force_cache:
+                        raise CacheMiss(config)
+                    context = Context(key)
+                    args.append((context, config, cache))
+                    ran.append(config)
 
-        manager.run()
+            run_slurm(_wrapper(self.func), args)
+        else:
+            for config in configs:
+                key = _key(self.func, config)
+                if not cache.contains(key) or force_run:
+                    if force_cache:
+                        raise CacheMiss(config)
+                    context = Context(key)
+                    manager.add_task(
+                        delayed(_wrapper(self.func)(context, config, cache))
+                    )
+                    ran.append(config)
+
+            manager.run()
 
         results = [cache.get(_key(self.func, config)) for config in configs]
 
