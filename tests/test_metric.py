@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+import pytest
 from memento.metric import Metric, MetricDataPoint
 import pandas as pd
 from memento.parallel import TaskManager, delayed
@@ -13,8 +14,8 @@ class TestMetric:
         assert metric1 is metric2
         assert metric1 is not metric3
 
-    # skipped as parallel object sharing doesn't work
-    def SKIP_metric_creates_singleton_instance_in_parallel(self):
+    @pytest.mark.skip
+    def test_metric_creates_singleton_instance_in_parallel(self):
         def task_1():
             metric1 = Metric("parallel")
             metric1.record(1.0, 1.0)
