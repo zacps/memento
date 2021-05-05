@@ -28,6 +28,14 @@ memento.memento module
    :undoc-members:
    :show-inheritance:
 
+memento.notifications module
+----------------------------
+
+.. automodule:: memento.notifications
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 memento.parallel module
 -----------------------
 
