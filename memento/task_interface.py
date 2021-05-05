@@ -3,31 +3,54 @@ Contains MEMENTO's task interface, once the configurations are
 generated and dispatched to tasks, we need some way to interact
 with the user code
 """
-
-from typing import Any, Callable, Optional
-
 import datetime
-
+import time
+from collections import namedtuple
+from typing import Any, Optional
+import pandas as pd
+from pandas import DataFrame
 from memento.configurations import Config
 
+Metric = namedtuple("Metric", 'x y')
 
 class Context:
     """
     The ``Context`` makes MEMENTO's utilities like checkpointing, metrics,
     progress reporting, and more available to tasks.
     """
+    _metrics: dict[str, list[Metric]]
 
     def __init__(self, key):
         """
         Each context is associated with exactly one task.
         """
         self.key = key
+        self._metrics = {}
 
-    def collect_metrics(self, *metrics: Callable):
-        """
-        Gets the new metrics to start next experiment
-        """
-        raise NotImplementedError("feature: metrics")
+    def collect_metrics(self) -> dict[str, pd.DataFrame]:
+        metrics: dict[str, DataFrame] = {}
+        for name in self._metrics.keys():
+            metrics[name] = pd.DataFrame(self._metrics[name])
+
+        return metrics
+
+    def record(self, metric_name: str = None, value: float = None, value_dict: dict[str, float] = None):
+        supplied_no_values = (metric_name is None or value is None) and value_dict
+        supplied_two_types_of_values = value is not None and value_dict is not None
+
+        if supplied_no_values is None:
+            raise ValueError("Must supply either name,value pair or a dictionary of name-value pairs.")
+        if supplied_two_types_of_values:
+            raise ValueError("Must supply only one of (name, value) or value_dict.")
+
+        name_value_mapping: dict[str, float] = value_dict or {metric_name: value}
+        timestamp = time.time()
+        for name in name_value_mapping.keys():
+            metric = Metric(timestamp, name_value_mapping[name])
+            if self._metrics.get(name, False):
+                self._metrics[name].append(metric)
+            else:
+                self._metrics[name] = [metric]
 
     def progress(self, delta, total=None):  # pylint: disable=no-self-use
         """
@@ -76,7 +99,7 @@ class Result:
 
     inner: Any
 
-    metrics: Any
+    metrics: list[pd.DataFrame]
 
     "The start time of the task."
     start_time: datetime.datetime
@@ -92,15 +115,15 @@ class Result:
     was_cached: bool
 
     def __init__(  # pylint: disable=too-many-arguments
-        self,
-        config,
-        inner,
-        metrics,
-        start_time: datetime.datetime,
-        runtime: datetime.timedelta,
-        cpu_time: Optional[datetime.timedelta],
-        memory: Optional[MemoryUsage],
-        was_cached: bool,
+            self,
+            config,
+            inner,
+            metrics: list[pd.DataFrame],
+            start_time: datetime.datetime,
+            runtime: datetime.timedelta,
+            cpu_time: Optional[datetime.timedelta],
+            memory: Optional[MemoryUsage],
+            was_cached: bool,
     ):
         self.config = config
         self.inner = inner
