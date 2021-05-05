@@ -5,7 +5,7 @@ import email
 from email.utils import formataddr
 import smtplib
 from abc import ABC, abstractmethod
-from typing import Union, TextIO, Iterable, NamedTuple
+from typing import Union, TextIO, Iterable, NamedTuple, Optional
 
 
 class NotificationProvider(ABC):
@@ -78,13 +78,13 @@ class FileSystemNotificationProvider(DefaultNotificationProvider):
         :param filepath: the filepath to write notifications to, opened in append mode,
         or a file-like object. Defaults to 'logs.txt'.
         """
-        self._filepath = filepath or "logs.txt"
-        self._is_file = not isinstance(filepath, str)
+        self._filepath = filepath if isinstance(filepath, str) else "logs.txt"
+        self._file = filepath if not isinstance(filepath, str) else None
 
     def _write(self, message: str):
         str_ = f"{message}\n"
-        if self._is_file:
-            self._filepath.write(str_)
+        if self._file:
+            self._file.write(str_)
         else:
             with open(self._filepath, "a") as file:
                 file.write(str_)
@@ -108,13 +108,13 @@ class SmtpConfiguration(NamedTuple):
     port: int
     """ SMTP server port. """
 
-    username: str = None
+    username: Optional[str] = None
     """ Username to authenticate with. """
 
-    password: str = None
+    password: Optional[str] = None
     """ Password to authenticate with. """
 
-    require_tls: bool = True
+    require_tls: Optional[bool] = True
     """ Whether to require a TLS connection. Defaults to True. """
 
 
@@ -151,7 +151,11 @@ class EmailNotificationProvider(DefaultNotificationProvider):
         :param from_addr: email address emails will be sent from
         :param to_addrs: email addresses emails will be sent to
         """
-        self._smpt_config = smtp
+        self._smpt_config = (
+            smtp
+            if isinstance(smtp, SmtpConfiguration)
+            else SmtpConfiguration("localhost", 0)
+        )
         self._client = smtp if isinstance(smtp, smtplib.SMTP) else None
         self._from_addr = from_addr
         self._to_addrs = to_addrs
@@ -182,7 +186,10 @@ class EmailNotificationProvider(DefaultNotificationProvider):
                     if self._smpt_config.require_tls:
                         raise error
 
-                if self._smpt_config.username:
+                if (
+                    self._smpt_config.username is not None
+                    and self._smpt_config.password is not None
+                ):
                     smtp.login(self._smpt_config.username, self._smpt_config.password)
                 smtp.send_message(message)
 
