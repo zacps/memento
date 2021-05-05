@@ -92,7 +92,7 @@ class _Task:
         notification_provider = cloudpickle.loads(self._notification_provider)
 
         try:
-            task_return = cloudpickle.loads(self._task)()
+            task_return = cloudpickle.dumps(cloudpickle.loads(self._task)())
             notification_provider.task_completion()
             return task_return
         except Exception as exception:
@@ -190,12 +190,13 @@ class TaskManager:
             processes=self._workers, maxtasksperchild=self._max_tasks_per_worker
         ) as pool:
             results = pool.map(_worker, self._tasks)
+
         self._tasks.clear()
 
         # At this point results is a list of tuples -> (task_index, task_result) so we can sort
 
         results.sort(key=lambda t: t[0])
-        results = [item[1] for item in results]
+        results = [cloudpickle.loads(item[1]) for item in results]
 
         self._notification_provider.job_completion()
 

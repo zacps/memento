@@ -4,9 +4,11 @@ generated and dispatched to tasks, we need some way to interact
 with the user code
 """
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import datetime
+
+from memento.configurations import Config
 
 
 class Context:
@@ -51,7 +53,7 @@ class Context:
         raise NotImplementedError("feature: checkpoints")
 
 
-class MemoryUsage:  # pylint: disable=too-few-public-methods
+class MemoryUsage:
     """
     Memory usage statistics recorded from a task.
     """
@@ -64,39 +66,43 @@ class MemoryUsage:  # pylint: disable=too-few-public-methods
         self.hardware_peak = hardware_peak
 
 
-class Result:  # pylint: disable=too-few-public-methods
+class Result:
     """
     The result from a single task. This contains the value returned from the experiment, ``inner``,
     and metadata about the task run.
     """
+
+    config: Config
 
     inner: Any
 
     metrics: Any
 
     "The start time of the task."
-    start_time: datetime.timedelta
+    start_time: datetime.datetime
 
     "The task's runtime, measured on the wall clock."
     runtime: datetime.timedelta
     "The task's runtime, measured by the CPU"
-    cpu_time: datetime.timedelta
+    cpu_time: Optional[datetime.timedelta]
     "Memory usage statistics"
-    memory: MemoryUsage
+    memory: Optional[MemoryUsage]
 
     "Whether or not this result was retrieved from cache."
     was_cached: bool
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
+        config,
         inner,
         metrics,
-        start_time: datetime.timedelta,
+        start_time: datetime.datetime,
         runtime: datetime.timedelta,
-        cpu_time: datetime.timedelta,
-        memory: MemoryUsage,
+        cpu_time: Optional[datetime.timedelta],
+        memory: Optional[MemoryUsage],
         was_cached: bool,
     ):
+        self.config = config
         self.inner = inner
         self.metrics = metrics
         self.start_time = start_time

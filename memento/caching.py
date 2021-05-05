@@ -84,13 +84,15 @@ class MemoryCacheProvider(CacheProvider):
     An in-memory cache provider. Uses a dictionary for underlying storage.
     """
 
-    def __init__(self, initial_cache: dict = None):
+    def __init__(self, initial_cache: dict = None, key: Callable = None):
         """
         Creates a cache provider that uses memory for caching.
 
         :param initial_cache: Optional initial cache, defaults to an empty dictionary.
         """
         self._cache = initial_cache or {}
+
+        self._key = key or default_key
 
     def __str__(self):
         return str(self._cache)
@@ -105,7 +107,7 @@ class MemoryCacheProvider(CacheProvider):
         return self._cache.get(key, False) is not False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
-        return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
+        return self._key(func, *args, **kwargs)
 
 
 class FileSystemCacheProvider(CacheProvider):
@@ -113,7 +115,12 @@ class FileSystemCacheProvider(CacheProvider):
     A filesystem caching provider. Uses SQLITE3 to write to a database file on disk.
     """
 
-    def __init__(self, connection: sqlite3.Connection = None, filepath: str = None):
+    def __init__(
+        self,
+        connection: sqlite3.Connection = None,
+        filepath: str = None,
+        key: Callable = None,
+    ):
         """
         Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
         :param connection: A sqlite3 DB connection to use. Supplying this breaks parallelization.
@@ -128,6 +135,8 @@ class FileSystemCacheProvider(CacheProvider):
         self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
         self._sql_select = "SELECT value FROM cache WHERE key = ?"
         self._sql_insert = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
+
+        self._key = key or default_key
 
         self._setup_database()
 
@@ -179,13 +188,13 @@ class FileSystemCacheProvider(CacheProvider):
         with self as database:
             rows = database.execute(self._sql_select, (key,)).fetchall()
             if rows:
-                return rows[0][0]
+                return cloudpickle.loads(rows[0][0])
 
             raise KeyError(f"Key '{key}' not in cache")
 
     def set(self, key: str, item) -> None:
         with self as database:
-            database.execute(self._sql_insert, (key, item))
+            database.execute(self._sql_insert, (key, cloudpickle.dumps(item)))
             database.commit()
 
     def contains(self, key: str) -> bool:
@@ -196,7 +205,7 @@ class FileSystemCacheProvider(CacheProvider):
             return False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
-        return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
+        return self._key(func, *args, **kwargs)
 
 
 class Cache:
@@ -267,3 +276,10 @@ class Cache:
         :return: A string representing the cached function.
         """
         return f"Cached function object: func: {self._func}, cache: {str(self._cache_provider)}"
+
+
+def default_key(func: Callable, *args, **kwargs) -> str:
+    """
+    Default cache key function. This uses cloudpickle to hash the function and all arguments.
+    """
+    return cloudpickle.dumps({"function": func, "args": args, "kwargs": kwargs})
