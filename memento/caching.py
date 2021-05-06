@@ -120,6 +120,7 @@ class FileSystemCacheProvider(CacheProvider):
         connection: sqlite3.Connection = None,
         filepath: str = None,
         key: Callable = None,
+        table_name: str = None,
     ):
         """
         Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
@@ -131,10 +132,11 @@ class FileSystemCacheProvider(CacheProvider):
         self._filepath = os.path.abspath(
             filepath or tempfile.NamedTemporaryFile(suffix="_memento.cache").name
         )
+        self._table_name = table_name or "cache"
 
         self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
-        self._sql_select = "SELECT value FROM cache WHERE key = ?"
-        self._sql_insert = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
+        self._sql_select = f"SELECT value FROM {self._table_name} WHERE key = ?"
+        self._sql_insert = f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)"
 
         self._key = key or default_key
 
@@ -148,7 +150,7 @@ class FileSystemCacheProvider(CacheProvider):
         with self as database:
             database.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS cache (
+                CREATE TABLE IF NOT EXISTS {self._table_name} (
                     key BINARY PRIMARY KEY,
                     ts REAL NOT NULL DEFAULT ({self._sqlite_timestamp}),
                     value BLOB NOT NULL
