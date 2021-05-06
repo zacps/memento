@@ -16,13 +16,13 @@ class NotificationProvider(ABC):
     """
 
     @abstractmethod
-    def job_completion(self):
+    def task_completed(self):
         """
         Executed when a task completes.
         """
 
     @abstractmethod
-    def task_completion(self):
+    def all_tasks_completed(self):
         """
         Executed when all tasks complete.
         """
@@ -41,10 +41,10 @@ class DefaultNotificationProvider(NotificationProvider):
     notification provider.
     """
 
-    def job_completion(self):
+    def task_completed(self):
         pass
 
-    def task_completion(self):
+    def all_tasks_completed(self):
         pass
 
     def task_failure(self):
@@ -56,14 +56,14 @@ class ConsoleNotificationProvider(DefaultNotificationProvider):
     Writes notification to the console (stdout).
     """
 
-    def job_completion(self):
-        print("Job completed")
+    def task_completed(self):
+        print("Task completed")
 
-    def task_completion(self):
-        print("All jobs completed")
+    def all_tasks_completed(self):
+        print("All tasks completed")
 
     def task_failure(self):
-        print("Job failed")
+        print("Task failed")
 
 
 class FileSystemNotificationProvider(DefaultNotificationProvider):
@@ -89,14 +89,14 @@ class FileSystemNotificationProvider(DefaultNotificationProvider):
             with open(self._filepath, "a") as file:
                 file.write(str_)
 
-    def job_completion(self):
-        self._write("Job completed")
+    def task_completed(self):
+        self._write("Task completed")
 
-    def task_completion(self):
-        self._write("All jobs completed")
+    def all_tasks_completed(self):
+        self._write("All tasks completed")
 
     def task_failure(self):
-        self._write("Job failed")
+        self._write("Task failed")
 
 
 class SmtpConfiguration(NamedTuple):
@@ -131,7 +131,7 @@ class EmailNotificationProvider(DefaultNotificationProvider):
             password='password'
         )
 
-        self.provider = EmailNotificationProvider(
+        provider = EmailNotificationProvider(
             smtp_config,
             "sender@gmail.com",
             ["recipient@gmail.com"]
@@ -204,16 +204,16 @@ class EmailNotificationProvider(DefaultNotificationProvider):
         )  # TODO: Maybe support HTML messages with a plain text fallback
         return message
 
-    def job_completion(self):
-        message = self.create_message("[Memento] Job completed", "Job completed")
+    def task_completed(self):
+        message = self.create_message("[Memento] Task completed", "Task completed")
         self._send_email(message)
 
-    def task_completion(self):
+    def all_tasks_completed(self):
         message = self.create_message(
-            "[Memento] All jobs completed", "All jobs completed"
+            "[Memento] All tasks completed", "All tasks completed"
         )
         self._send_email(message)
 
     def task_failure(self):
-        message = self.create_message("[Memento] Job failed", "Job failed")
+        message = self.create_message("[Memento] Task failed", "Task failed")
         self._send_email(message)

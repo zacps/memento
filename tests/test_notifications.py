@@ -20,17 +20,17 @@ class TestFileSystemNotificationProvider:
         self.file = StringIO()
         self.provider = FileSystemNotificationProvider(filepath=self.file)
 
-    def test_writes_to_file_on_job_completion(self):
-        self.provider.job_completion()
-        assert self.file.getvalue() == "Job completed\n"
+    def test_writes_to_file_on_job_completed(self):
+        self.provider.task_completed()
+        assert self.file.getvalue() == "Task completed\n"
 
-    def test_writes_to_file_on_task_completion(self):
-        self.provider.task_completion()
-        assert self.file.getvalue() == "All jobs completed\n"
+    def test_writes_to_file_on_all_tasks_completed(self):
+        self.provider.all_tasks_completed()
+        assert self.file.getvalue() == "All tasks completed\n"
 
     def test_writes_to_file_on_task_failure(self):
         self.provider.task_failure()
-        assert self.file.getvalue() == "Job failed\n"
+        assert self.file.getvalue() == "Task failed\n"
 
 
 class Handler(handlers.Message):
@@ -120,22 +120,22 @@ class TestEmailNotificationProvider:
         assert len(messages) == 1
         self._check_message(messages[0], subject, payload)
 
-    def test_sends_email_on_job_completion(self):
-        self.provider.job_completion()
-        subject = "[Memento] Job completed"
-        payload = "Job completed"
+    def test_sends_email_on_task_completed(self):
+        self.provider.task_completed()
+        subject = "[Memento] Task completed"
+        payload = "Task completed"
         self._check_messages(subject, payload)
 
-    def test_sends_email_on_task_completion(self):
-        self.provider.task_completion()
-        subject = "[Memento] All jobs completed"
-        payload = "All jobs completed"
+    def test_sends_email_on_all_tasks_completed(self):
+        self.provider.all_tasks_completed()
+        subject = "[Memento] All tasks completed"
+        payload = "All tasks completed"
         self._check_messages(subject, payload)
 
     def test_sends_email_on_task_failure(self):
         self.provider.task_failure()
-        subject = "[Memento] Job failed"
-        payload = "Job failed"
+        subject = "[Memento] Task failed"
+        payload = "Task failed"
         self._check_messages(subject, payload)
 
 
@@ -160,12 +160,12 @@ class TestEmailNotificationProviderWithServer:
     def teardown_method(self):
         self.server.stop()
 
-    def test_sends_email_to_server_on_job_completion(self):
-        self.provider.job_completion()
+    def test_sends_email_to_server_on_task_completed(self):
+        self.provider.task_completed()
         assert len(self.server.messages) == 1
 
-    def test_sends_email_to_server_on_task_completion(self):
-        self.provider.task_completion()
+    def test_sends_email_to_server_on_all_tasks_completed(self):
+        self.provider.all_tasks_completed()
         assert len(self.server.messages) == 1
 
     def test_sends_email_to_server_on_task_failure(self):
