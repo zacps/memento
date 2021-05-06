@@ -100,6 +100,11 @@ class Memento:
         return results
 
 
+def remove_checkpoints(cache_provider: CacheProvider, key: str):
+    if isinstance(cache_provider, FileSystemCacheProvider):
+        with cache_provider as db:
+            db.execute(f"DROP table {key}-checkpoint")
+
 def _wrapper(func: Callable) -> Callable:
     """
     Wrapper which runs in the task thread. This is responsible for collecting performance metrics
@@ -107,7 +112,7 @@ def _wrapper(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(context: Context, config: Config, cache: CacheProvider) -> Result:
+    def inner(context: Context, config: Config, cache_provider: CacheProvider) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -124,8 +129,8 @@ def _wrapper(func: Callable) -> Callable:
             memory=None,
             was_cached=True,
         )
-        cache.set(context.key, result)
-
+        cache_provider.set(context.key, result)
+        remove_checkpoints(cache_provider)
         return result
 
     return inner
