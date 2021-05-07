@@ -32,7 +32,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ~/.cache/pypoetry/virtualenvs
-        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}-v1
 
     - name: Black
       run: |
@@ -71,7 +71,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ~/.cache/pypoetry/virtualenvs
-        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}-v1
 
     - name: Pytest
       run: |
@@ -102,7 +102,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ~/.cache/pypoetry/virtualenvs
-        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+        key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}-v1
 
     - name: Sphinx apidoc
       run: |
