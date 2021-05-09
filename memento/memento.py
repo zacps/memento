@@ -62,30 +62,30 @@ class Memento:
             logger.info("Exiting due to dry run")
             return None
 
-        cache = FileSystemCacheProvider(
+        cache_provider = FileSystemCacheProvider(
             filepath=(
-                cache_path
-                or os.environ.get("MEMENTO_CACHE_PATH", None)
-                or "memento.sqlite"
+                    cache_path
+                    or os.environ.get("MEMENTO_CACHE_PATH", None)
+                    or "memento.sqlite"
             ),
-            key=_key,
+            key_provider=_key_provider,
         )
         manager = TaskManager()
 
         # Run tasks for which we have no cached result
         ran = []
         for config in configs:
-            key = _key(self.func, config)
-            if not cache.contains(key) or force_run:
+            key = _key_provider(self.func, config)
+            if not cache_provider.contains(key) or force_run:
                 if force_cache:
                     raise CacheMiss(config)
                 context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
+                manager.add_task(delayed(_wrapper(self.func)(context, config, cache_provider)))
                 ran.append(config)
 
         manager.run()
 
-        results = [cache.get(_key(self.func, config)) for config in configs]
+        results = [cache_provider.get(_key_provider(self.func, config)) for config in configs]
 
         for result in results:
             if result.config in ran:
@@ -103,7 +103,8 @@ class Memento:
 def remove_checkpoints(cache_provider: CacheProvider, key: str):
     if isinstance(cache_provider, FileSystemCacheProvider):
         with cache_provider as db:
-            db.execute(f"DROP table {key}-checkpoint")
+            db.execute(f"DROP table {key}_checkpoint")
+
 
 def _wrapper(func: Callable) -> Callable:
     """
@@ -136,6 +137,6 @@ def _wrapper(func: Callable) -> Callable:
     return inner
 
 
-def _key(func: Callable, config: Config):
+def _key_provider(func: Callable, config: Config):
     # The default behaviour caches on all arguments, including the config object.
     return cloudpickle.dumps({"function": func, "args": [config]})

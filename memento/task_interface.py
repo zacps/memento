@@ -38,7 +38,7 @@ class Context:
 
     # Whether or not we checkpoint a particular value or not will depend on
     # if we implement full program checkpointing or not.
-    def checkpoint(self, func: callable):
+    def checkpoint(self, func: callable) -> Cache:
         """
         Save the current state of the task.
         """
