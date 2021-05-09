@@ -1,10 +1,8 @@
 import sqlite3
 from unittest.mock import Mock, MagicMock
-
 import pytest
-
-from memento.caching import CacheProvider, FileSystemCacheProvider
-from memento.memento import remove_checkpoints, _key_provider
+from memento.caching import CacheProvider, FileSystemCacheProvider, default_key_provider
+from memento.memento import remove_checkpoints
 from memento.task_interface import Context
 
 
@@ -54,6 +52,19 @@ class TestContext:
 
             assert len(total_calls) == 1
 
+        def test_checkpoint_saves_multiple_checkpoints(self):
+
+            cache_provider = FileSystemCacheProvider(table_name="checkpoint")
+            context = Context("key", cache_provider)
+
+            def experiment():
+                context.checkpoint(arbitrary_expensive_thing)(1)
+                context.checkpoint(arbitrary_expensive_thing)(2)
+
+            experiment()
+
+            assert cache_provider.contains(default_key_provider(arbitrary_expensive_thing, 1))
+            assert cache_provider.contains(default_key_provider(arbitrary_expensive_thing, 2))
 
         def test_checkpoint_cleans_up(self):
             cache_provider = FileSystemCacheProvider(table_name="key_checkpoint")
