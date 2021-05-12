@@ -10,6 +10,8 @@ from typing import Callable, List, TextIO, Iterable
 
 import cloudpickle
 
+from .notifications import DefaultNotificationProvider, NotificationProvider
+
 
 def delayed(func: Callable):
     """
@@ -60,11 +62,20 @@ class _PrefixedStream:
 
 
 class _Task:
-    def __init__(self, identifier: str, index: int, task: Callable, priority: int):
+    # pylint: disable=R0913
+    def __init__(
+        self,
+        identifier: str,
+        index: int,
+        task: Callable,
+        priority: int,
+        notification_provider: NotificationProvider,
+    ):
         self._identifier = identifier
         self._task = cloudpickle.dumps(task)
         self._priority = priority
         self._index = index
+        self._notification_provider = cloudpickle.dumps(notification_provider)
 
     @property
     def identifier(self):
@@ -78,7 +89,15 @@ class _Task:
 
     def run(self):
         """ Runs this task and returns it's result. """
-        return cloudpickle.dumps(cloudpickle.loads(self._task)())
+        notification_provider = cloudpickle.loads(self._notification_provider)
+
+        try:
+            task_return = cloudpickle.loads(self._task)()
+            notification_provider.task_completed()
+            return cloudpickle.dumps(task_return)
+        except Exception as exception:
+            notification_provider.task_failure()
+            raise exception
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
@@ -116,16 +135,30 @@ class TaskManager:
 
     """
 
-    def __init__(self, workers: int = None, max_tasks_per_worker: int = None):
+    def __init__(
+        self,
+        workers: int = None,
+        max_tasks_per_worker: int = None,
+        notification_provider: NotificationProvider = None,
+    ):
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[_Task] = []
         self._task_index = 0
+        self._notification_provider = (
+            notification_provider or DefaultNotificationProvider()
+        )
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
-        task = _Task(f"Task {self._id_count}", self._task_index, callable_, priority_)
+        task = _Task(
+            f"Task {self._id_count}",
+            self._task_index,
+            callable_,
+            priority_,
+            self._notification_provider,
+        )
         self._task_index += 1
         return task
 
@@ -164,5 +197,7 @@ class TaskManager:
 
         results.sort(key=lambda t: t[0])
         results = [cloudpickle.loads(item[1]) for item in results]
+
+        self._notification_provider.all_tasks_completed()
 
         return results
