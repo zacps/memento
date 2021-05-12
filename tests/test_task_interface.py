@@ -6,7 +6,9 @@ from memento.memento import remove_checkpoints
 from memento.task_interface import Context
 
 
-def constant_key_provider(*args, **kwargs):  # Necessary to ensure that mocks are not pickled
+def constant_key_provider(
+    *args, **kwargs
+):  # Necessary to ensure that mocks are not pickled
     return "key"
 
 
@@ -16,7 +18,6 @@ def arbitrary_expensive_thing(x):
 
 class TestContext:
     class TestCheckpoint:
-
         def test_checkpoint_doesnt_call_function_if_in_cache(self):
             expensive_thing = MagicMock()
 
@@ -41,7 +42,9 @@ class TestContext:
             def expensive_thing(calls: list[int]):
                 calls.append(1)
 
-            cache_provider = FileSystemCacheProvider(key_provider=constant_key_provider, table_name="checkpoint")
+            cache_provider = FileSystemCacheProvider(
+                key_provider=constant_key_provider, table_name="checkpoint"
+            )
             context = Context("key", cache_provider)
 
             def experiment():
@@ -63,8 +66,12 @@ class TestContext:
 
             experiment()
 
-            assert cache_provider.contains(default_key_provider(arbitrary_expensive_thing, 1))
-            assert cache_provider.contains(default_key_provider(arbitrary_expensive_thing, 2))
+            assert cache_provider.contains(
+                default_key_provider(arbitrary_expensive_thing, 1)
+            )
+            assert cache_provider.contains(
+                default_key_provider(arbitrary_expensive_thing, 2)
+            )
 
         def test_checkpoint_cleans_up(self):
             cache_provider = FileSystemCacheProvider(table_name="key_checkpoint")
@@ -79,4 +86,4 @@ class TestContext:
 
             with pytest.raises(sqlite3.OperationalError) as error:
                 context.checkpoint(arbitrary_expensive_thing)(1)
-                assert str(error.info) == 'no such table: key_checkpoint'
+                assert str(error.info) == "no such table: key_checkpoint"

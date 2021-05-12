@@ -96,15 +96,15 @@ class Result:
     was_cached: bool
 
     def __init__(  # pylint: disable=too-many-arguments
-            self,
-            config,
-            inner,
-            metrics,
-            start_time: datetime.datetime,
-            runtime: datetime.timedelta,
-            cpu_time: Optional[datetime.timedelta],
-            memory: Optional[MemoryUsage],
-            was_cached: bool,
+        self,
+        config,
+        inner,
+        metrics,
+        start_time: datetime.datetime,
+        runtime: datetime.timedelta,
+        cpu_time: Optional[datetime.timedelta],
+        memory: Optional[MemoryUsage],
+        was_cached: bool,
     ):
         self.config = config
         self.inner = inner

@@ -136,7 +136,9 @@ class FileSystemCacheProvider(CacheProvider):
 
         self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
         self._sql_select = f"SELECT value FROM {self._table_name} WHERE key = ?"
-        self._sql_insert = f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)"
+        self._sql_insert = (
+            f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)"
+        )
 
         self._key_provider = key_provider or default_key_provider
 

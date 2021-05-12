@@ -64,9 +64,9 @@ class Memento:
 
         cache_provider = FileSystemCacheProvider(
             filepath=(
-                    cache_path
-                    or os.environ.get("MEMENTO_CACHE_PATH", None)
-                    or "memento.sqlite"
+                cache_path
+                or os.environ.get("MEMENTO_CACHE_PATH", None)
+                or "memento.sqlite"
             ),
             key_provider=_key_provider,
         )
@@ -79,13 +79,17 @@ class Memento:
             if not cache_provider.contains(key) or force_run:
                 if force_cache:
                     raise CacheMiss(config)
-                context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config, cache_provider)))
+                context = Context(key, cache_provider)
+                manager.add_task(
+                    delayed(_wrapper(self.func)(context, config, cache_provider))
+                )
                 ran.append(config)
 
         manager.run()
 
-        results = [cache_provider.get(_key_provider(self.func, config)) for config in configs]
+        results = [
+            cache_provider.get(_key_provider(self.func, config)) for config in configs
+        ]
 
         for result in results:
             if result.config in ran:
@@ -101,9 +105,12 @@ class Memento:
 
 
 def remove_checkpoints(cache_provider: CacheProvider, key: str):
+    """
+    Remove checkpoints in order to save space in database
+    """
     if isinstance(cache_provider, FileSystemCacheProvider):
-        with cache_provider as db:
-            db.execute(f"DROP table {key}_checkpoint")
+        with cache_provider as database:
+            database.execute(f"DROP table {key}_checkpoint")
 
 
 def _wrapper(func: Callable) -> Callable:
@@ -113,7 +120,9 @@ def _wrapper(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(context: Context, config: Config, cache_provider: CacheProvider) -> Result:
+    def inner(
+        context: Context, config: Config, cache_provider: CacheProvider
+    ) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -131,7 +140,7 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
         cache_provider.set(context.key, result)
-        remove_checkpoints(cache_provider)
+        remove_checkpoints(cache_provider, context.key)
         return result
 
     return inner
