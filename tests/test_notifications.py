@@ -5,6 +5,7 @@ from io import StringIO
 from typing import List
 from unittest.mock import Mock
 
+import pytest
 from aiosmtpd import controller, handlers
 
 from memento.notifications import (
@@ -92,13 +93,20 @@ class TestSmtpServer:
         self._controller.stop()
 
 
+@pytest.mark.parametrize(
+    "to_addrs",
+    [
+        ["receiver@test.com"],
+        ["receiver1@test.com", "receiver2@test.com"],
+    ],
+)
 class TestEmailNotificationProvider:
-    def setup_method(self):
+    def setup_provider(self, to_addrs: List[str]):
         self.messages: List[email.message.Message] = []
         self.client = Mock(spec_set=smtplib.SMTP)
         self.client.send_message.side_effect = self.messages.append
         self.from_addr = "sender@text.com"
-        self.to_addrs = ["receiver@test.com"]
+        self.to_addrs = to_addrs
         self.provider = EmailNotificationProvider(
             self.client, self.from_addr, self.to_addrs
         )
@@ -111,7 +119,7 @@ class TestEmailNotificationProvider:
         contains the correct information.
         """
         assert parseaddr(message["from"])[1] == self.from_addr
-        assert message["to"] == "".join(self.to_addrs)
+        assert message["to"] == ", ".join(self.to_addrs)
         assert message["subject"] == subject
         assert message.get_payload().strip() == payload
 
@@ -120,19 +128,22 @@ class TestEmailNotificationProvider:
         assert len(messages) == 1
         self._check_message(messages[0], subject, payload)
 
-    def test_sends_email_on_task_completed(self):
+    def test_sends_email_on_task_completed(self, to_addrs):
+        self.setup_provider(to_addrs)
         self.provider.task_completed()
         subject = "[Memento] Task completed"
         payload = "Task completed"
         self._check_messages(subject, payload)
 
-    def test_sends_email_on_all_tasks_completed(self):
+    def test_sends_email_on_all_tasks_completed(self, to_addrs):
+        self.setup_provider(to_addrs)
         self.provider.all_tasks_completed()
         subject = "[Memento] All tasks completed"
         payload = "All tasks completed"
         self._check_messages(subject, payload)
 
-    def test_sends_email_on_task_failure(self):
+    def test_sends_email_on_task_failure(self, to_addrs):
+        self.setup_provider(to_addrs)
         self.provider.task_failure()
         subject = "[Memento] Task failed"
         payload = "Task failed"
