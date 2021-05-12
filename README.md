@@ -23,6 +23,12 @@ $ poetry add (--dev) fancy_library
 $ poetry run pytest
 ```
 
+Alternatively to only run a subset of tests that haven't been marked as time consuming/slow you can use:
+
+```
+$ poetry run pytest -m "not slow"
+```
+
 ### Linters
 
 ```

@@ -17,11 +17,9 @@ def delayed(func: Callable):
     """
     Creates a version of the given function that stores the arguments of it's first call.
 
-    ### Example:
+    ::
 
-    ```python
-    delayed(sum)([1, 2])() # Equivalent to calling sum([1, 2])
-    ```
+        delayed(sum)([1, 2])() # Equivalent to calling sum([1, 2])
     """
 
     def args_wrapper(*args, **kwargs):
@@ -119,19 +117,18 @@ class TaskManager:
     """
     Provides a simple interface for running multiple tasks in parallel.
 
-    ### Examples
+    ::
 
-    ```python
-    manager = TaskManager()
-    manager.add_task(delayed(lambda x: print(x))("Hello World!"))
-    manager.run()
-    ```
+        manager = TaskManager()
+        manager.add_task(delayed(lambda x: print(x))("Hello World!"))
+        manager.run()
 
-    ```python
-    manager.add_task(delayed(sum)([1, 2]))
-    results = manager.run()
-    print(results)
-    ```
+    ::
+
+        manager.add_task(delayed(sum)([1, 2]))
+        results = manager.run()
+        print(results) # [3]
+
 
     """
 
@@ -141,6 +138,14 @@ class TaskManager:
         max_tasks_per_worker: int = None,
         notification_provider: NotificationProvider = None,
     ):
+        """
+        Creates a TaskManager.
+
+        :param workers: max number of worker processes
+        :param max_tasks_per_worker: max number of tasks each worker process can execute before
+            it's replaced by a new process
+        :param notification_provider: notification provider to use
+        """
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0

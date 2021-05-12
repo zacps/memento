@@ -51,7 +51,7 @@ class Handler(handlers.Message):
         return self._messages
 
 
-class TestSmtpServer:
+class DummySmtpServer:
     """ Dummy SMTP server that saves emails to a list. Primarily for testing/debugging. """
 
     def __init__(self):
@@ -150,11 +150,12 @@ class TestEmailNotificationProvider:
         self._check_messages(subject, payload)
 
 
+@pytest.mark.slow
 class TestEmailNotificationProviderWithServer:
     """ Tests to verify that emails are delivered to the SMTP server. """
 
     def setup_method(self):
-        self.server = TestSmtpServer()
+        self.server = DummySmtpServer()
         self.server.start()
 
         self.from_addr = "sender@text.com"
