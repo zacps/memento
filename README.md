@@ -19,8 +19,20 @@ $ poetry add (--dev) fancy_library
 
 ### Tests
 
+Non-HPC tests:
+
 ```
 $ poetry run pytest
+```
+
+HPC tests:
+
+```
+$ cd slurm-docker-cluster
+$ docker build -t slurm-docker-cluster:19.05.1
+$ docker-compose up -d
+$ docker-compose exec -w /memento slurmctld poetry run pytest -m slurm
+$ docker-compose down
 ```
 
 ### Linters

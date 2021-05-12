@@ -22,6 +22,9 @@ mypy = "^0.812"
 notes = "FIXME,XXX"
 disable = ["too-many-instance-attributes", "too-few-public-methods"]
 
+[tool.pytest.ini_options]
+markers = "slurm: Test requires a slurm environment"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

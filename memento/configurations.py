@@ -3,9 +3,9 @@ Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` typ
 """
 
 import itertools
-from typing import Dict, List
+from typing import Callable, Dict, List
 
-RESERVED_NAMES = ["settings", "runtime", "overrides"]
+RESERVED_NAMES = ["settings", "runtime"]
 
 
 def configurations(matrix: dict) -> "Configurations":
@@ -29,12 +29,12 @@ def configurations(matrix: dict) -> "Configurations":
     settings = matrix.get("settings", {})
     exclude = matrix.get("exclude", [])
     runtime = matrix.get("runtime", {})
-    # FIXME: Add overrides
 
     # Generate the cartesian product of all parameters
     elements = itertools.product(*parameters.values())
     configs = [Config(**dict(zip(parameters.keys(), element))) for element in elements]
 
+    # Remove excluded parameter configurations
     for ex in exclude:
         for i, config in enumerate(configs):
             if all(getattr(config, k, _Never) == v for k, v in ex.items()):
@@ -58,6 +58,7 @@ class Configurations:
         # Create back-references
         for config in self.configurations:
             config.settings = settings
+            config.runtime = runtime
 
     def __len__(self):
         return self.configurations.__len__()

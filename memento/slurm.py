@@ -32,7 +32,7 @@ def run_slurm(func: Callable, args_list: List[List[Any]]):
     """
 
     # pickle function and arguments to temp files
-    files = (NamedTemporaryFile("w", delete=False) for _ in args_list)
+    files = (NamedTemporaryFile("wb", delete=False) for _ in args_list)
 
     for args, file in zip(args_list, files):
         config = args[1]
@@ -46,10 +46,10 @@ def _submit_job(file, config):
     Submit a single job to slurm.
     """
     slurm = Slurm(
-        cpus_per_task=config.runtime.cpus,
-        mem_per_cpu=config.runtime.mem_per_cpu,
-        job_name=config.runtime.job_name or f"memento",  # FIXME: More useful job name
-        output=config.runtime.output,  # FIXME: Default to something sensible
+        cpus_per_task=config.runtime["cpus"],
+        mem_per_cpu=config.runtime["mem_per_cpu"],
+        job_name=config.runtime.get("jobname", "memento"),
+        output=config.runtime["output"],  # FIXME: Default to something sensible
     )
     # pass path to funcion and arguments
     slurm.sbatch(

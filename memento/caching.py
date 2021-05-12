@@ -152,7 +152,7 @@ class FileSystemCacheProvider(CacheProvider):
                     key BINARY PRIMARY KEY,
                     ts REAL NOT NULL DEFAULT ({self._sqlite_timestamp}),
                     value BLOB NOT NULL
-                ) WITHOUT ROWID
+                )
             """
             )
 
