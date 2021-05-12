@@ -13,6 +13,20 @@ class Context:
     """
     The ``Context`` makes MEMENTO's utilities like checkpointing, metrics,
     progress reporting, and more available to tasks.
+        ### Example:
+
+        ```python
+            def expensive_thing(x):
+                return x
+
+            cache_provider = FileSystemCacheProvider(table_name="checkpoint")
+            context = Context("key", cache_provider)
+
+            metrics = context.collect_metrics()
+            context.progress()
+            context.checkpoint(expensive_thing)()
+        ```
+
     """
 
     def __init__(self, key, cache_provider: CacheProvider):
@@ -36,8 +50,6 @@ class Context:
         """
         raise NotADirectoryError("feature: progress")
 
-    # Whether or not we checkpoint a particular value or not will depend on
-    # if we implement full program checkpointing or not.
     def checkpoint(self, func: callable) -> Cache:
         """
         Save the current state of the task.
