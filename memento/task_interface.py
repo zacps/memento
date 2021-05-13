@@ -26,7 +26,6 @@ class Context:
             context.progress()
             context.checkpoint(expensive_thing)()
         ```
-
     """
 
     def __init__(self, key: str, cache_provider: CacheProvider):
@@ -50,7 +49,7 @@ class Context:
         """
         raise NotADirectoryError("feature: progress")
 
-    def checkpoint(self, func: callable) -> Cache:
+    def checkpoint(self, func: Callable[[], str]) -> Cache:
         """
         Save the current state of the task.
         """
