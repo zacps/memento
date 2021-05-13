@@ -35,21 +35,19 @@ class Context:
 
         return metrics
 
-    def record(self, metric_name: str = None, value: Union[Union[float, Tuple[float, float]], dict[str, float]] = None):
-        if isinstance(value, dict):
-            name_value_mapping = value
-        else:
-            name_value_mapping = {metric_name: value}
-
+    def record(self, value_dict: dict[str, Union[float, Tuple[float, float]]]):
         x_value = time.time()
 
-        for name in name_value_mapping.keys():
-            y_value = name_value_mapping[name]
+        for name in value_dict.keys():
+            y_value = value_dict[name]
 
             # Handles the case of a tuple
             if isinstance(y_value, Tuple):
                 x_value = y_value[0]
                 y_value = y_value[1]
+
+            assert isinstance(x_value, float)
+            assert isinstance(y_value, float)
 
             metric = Metric(x_value, y_value)
             if self._metrics.get(name, False):

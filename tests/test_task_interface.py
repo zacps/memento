@@ -7,8 +7,8 @@ class TestContext:
     class TestRecord:
         def test_record_records_single_value(self):
             context = Context("key")
-            context.record("name", 1)
-            context.record("name", 2)
+            context.record({"name": 1.0})
+            context.record({"name": 2.0})
 
             metrics = context.collect_metrics()
 
@@ -21,7 +21,7 @@ class TestContext:
 
         def test_record_records_multiple_values_at_same_timestamp(self):
             context = Context("key")
-            context.record(value={"name1": 1.0, "name2": 2.0})
+            context.record(value_dict={"name1": 1.0, "name2": 2.0})
 
             metrics = context.collect_metrics()
 
@@ -41,9 +41,9 @@ class TestContext:
 
         def test_record_records_multiple_values_at_different_timestamps(self):
             context = Context("key")
-            context.record("name1", 1.0)
+            context.record({"name1": 1.0})
             time.sleep(0.001)
-            context.record("name2", 2.0)
+            context.record({"name2": 2.0})
 
             metrics = context.collect_metrics()
 
@@ -63,7 +63,7 @@ class TestContext:
 
         def test_record_records_x_and_y_when_given_a_tuple(self):
             context = Context("key")
-            context.record("name1", (1.0, 2.0))
+            context.record({"name1": (1.0, 2.0)})
 
             metrics = context.collect_metrics()
 
