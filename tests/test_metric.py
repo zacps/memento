@@ -33,14 +33,16 @@ class TestMetric:
         manager.add_tasks([delayed(task_1)(), delayed(task_2)()])
         manager.run()
 
-        expected_dataframe = pd.DataFrame([
-            MetricDataPoint(1.0, 1.0),
-            MetricDataPoint(2.0, 2.0),
-            MetricDataPoint(3.0, 3.0),
-            MetricDataPoint(4.0, 1.0),
-            MetricDataPoint(5.0, 2.0),
-            MetricDataPoint(6.0, 3.0),
-        ])
+        expected_dataframe = pd.DataFrame(
+            [
+                MetricDataPoint(1.0, 1.0),
+                MetricDataPoint(2.0, 2.0),
+                MetricDataPoint(3.0, 3.0),
+                MetricDataPoint(4.0, 1.0),
+                MetricDataPoint(5.0, 2.0),
+                MetricDataPoint(6.0, 3.0),
+            ]
+        )
         actual_dataframe = Metric("parallel").dump_to_df()
 
         assert expected_dataframe.equals(actual_dataframe)
@@ -119,7 +121,10 @@ class TestMetric:
     def test_metric_uses_supplied_generator(self):
         generator = MagicMock()
         generator.__next__.return_value = 0.0
-        metric = Metric(metric_name="test_metric_uses_supplied_generator", x_axis_generator=generator)
+        metric = Metric(
+            metric_name="test_metric_uses_supplied_generator",
+            x_axis_generator=generator,
+        )
 
         metric.record(0)
 

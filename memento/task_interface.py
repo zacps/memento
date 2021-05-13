@@ -11,7 +11,7 @@ import pandas as pd
 from pandas import DataFrame
 from memento.configurations import Config
 
-Metric = namedtuple("Metric", 'x y')
+Metric = namedtuple("Metric", "x y")
 
 
 class Context:
@@ -19,6 +19,7 @@ class Context:
     The ``Context`` makes MEMENTO's utilities like checkpointing, metrics,
     progress reporting, and more available to tasks.
     """
+
     _metrics: dict[str, list[Metric]]
 
     def __init__(self, key):
@@ -57,7 +58,7 @@ class Context:
         """
         x_value = time.time()
 
-        for name in value_dict.keys():
+        for name in value_dict:
             y_value = value_dict[name]
 
             # Handles the case of a tuple
@@ -138,15 +139,15 @@ class Result:
     was_cached: bool
 
     def __init__(  # pylint: disable=too-many-arguments
-            self,
-            config,
-            inner,
-            metrics: list[pd.DataFrame],
-            start_time: datetime.datetime,
-            runtime: datetime.timedelta,
-            cpu_time: Optional[datetime.timedelta],
-            memory: Optional[MemoryUsage],
-            was_cached: bool,
+        self,
+        config,
+        inner,
+        metrics: list[pd.DataFrame],
+        start_time: datetime.datetime,
+        runtime: datetime.timedelta,
+        cpu_time: Optional[datetime.timedelta],
+        memory: Optional[MemoryUsage],
+        was_cached: bool,
     ):
         self.config = config
         self.inner = inner
