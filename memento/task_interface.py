@@ -29,13 +29,32 @@ class Context:
         self._metrics = {}
 
     def collect_metrics(self) -> dict[str, pd.DataFrame]:
+        """
+        Collects all of the metrics as dataframes.
+        :return: A dictionary of metric names that map to Pandas Dataframes.
+        """
         metrics: dict[str, DataFrame] = {}
         for name in self._metrics.keys():
             metrics[name] = pd.DataFrame(self._metrics[name])
 
         return metrics
 
-    def record(self, value_dict: dict[str, Union[float, Tuple[float, float]]]):
+    def record(self, value_dict: dict[str, Union[float, Tuple[float, float]]]) -> None:
+        """
+        Records a floating point metric in one of the following formats.
+        Default x value is a timestamp.
+        Metrics are available as part of the results object.
+
+        ..
+            context.record({"metric_name": value})
+            context.record({"metric_name": (x,y)})
+
+            # Record with the same timestamp
+            context.record({"metric_1": value1, "metric_2": value2})
+
+        :return: None.
+        :param value_dict:
+        """
         x_value = time.time()
 
         for name in value_dict.keys():
@@ -46,6 +65,7 @@ class Context:
                 x_value = y_value[0]
                 y_value = y_value[1]
 
+            # Type guards that shouldn't be triggered.
             assert isinstance(x_value, float)
             assert isinstance(y_value, float)
 
