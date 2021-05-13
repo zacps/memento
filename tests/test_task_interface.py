@@ -36,3 +36,24 @@ class TestContext:
             assert expected_y_values_1 == actual_y_values_1
             assert expected_y_values_2 == actual_y_values_2
             assert x_values_1 == x_values_2
+
+        def test_record_records_multiple_values_at_different_timestamps(self):
+            context = Context("key")
+            context.record("name1", 1.0)
+            context.record("name2", 2.0)
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name1")
+            assert metrics.__contains__("name2")
+
+            expected_y_values_1 = [1.0]
+            actual_y_values_1 = list(metrics["name1"]["y"])
+            expected_y_values_2 = [2.0]
+            actual_y_values_2 = list(metrics["name2"]["y"])
+            x_values_1 = list(metrics["name1"]["x"])
+            x_values_2 = list(metrics["name2"]["x"])
+
+            assert expected_y_values_1 == actual_y_values_1
+            assert expected_y_values_2 == actual_y_values_2
+            assert x_values_1 == x_values_2
