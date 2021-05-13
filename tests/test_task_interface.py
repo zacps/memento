@@ -21,7 +21,7 @@ class TestContext:
 
         def test_record_records_multiple_values_at_same_timestamp(self):
             context = Context("key")
-            context.record(value_dict={"name1": 1.0, "name2": 2.0})
+            context.record(value={"name1": 1.0, "name2": 2.0})
 
             metrics = context.collect_metrics()
 

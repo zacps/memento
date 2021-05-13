@@ -35,17 +35,12 @@ class Context:
 
         return metrics
 
-    def record(self, metric_name: str = None, value: Union[float, Tuple[float, float]] = None,
-               value_dict: dict[str, float] = None):
-        supplied_no_values = (metric_name is None or value is None) and value_dict
-        supplied_two_types_of_values = value is not None and value_dict is not None
+    def record(self, metric_name: str = None, value: Union[Union[float, Tuple[float, float]], dict[str, float]] = None):
+        if isinstance(value, dict):
+            name_value_mapping = value
+        else:
+            name_value_mapping = {metric_name: value}
 
-        if supplied_no_values is None:
-            raise ValueError("Must supply either name,value pair or a dictionary of name-value pairs.")
-        if supplied_two_types_of_values:
-            raise ValueError("Must supply only one of (name, value) or value_dict.")
-
-        name_value_mapping: dict[str, float] = value_dict or {metric_name: value}
         x_value = time.time()
 
         for name in name_value_mapping.keys():
