@@ -140,7 +140,6 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
         cache_provider.set(context.key, result)
-        remove_checkpoints(cache_provider, context.key)
         return result
 
     return inner

@@ -87,3 +87,22 @@ class TestContext:
             with pytest.raises(sqlite3.OperationalError) as error:
                 context.checkpoint(arbitrary_expensive_thing)(1)
                 assert str(error.info) == "no such table: key_checkpoint"
+
+        def test_multiple_checkpoint_deletion(self):
+            cache_provider = FileSystemCacheProvider(table_name="key_checkpoint")
+            context = Context("key", cache_provider)
+            cache_provider_2 = FileSystemCacheProvider(table_name="key2_checkpoint")
+            context_2 = Context("key2", cache_provider_2)
+
+            def experiment():
+                context.checkpoint(arbitrary_expensive_thing)(1)
+                context_2.checkpoint(arbitrary_expensive_thing)(1)
+
+            experiment()
+            remove_checkpoints(cache_provider, "key")
+            remove_checkpoints(cache_provider_2, "key2")
+
+            with pytest.raises(sqlite3.OperationalError) as error:
+                context.checkpoint(arbitrary_expensive_thing)(1)
+                context_2.checkpoint(arbitrary_expensive_thing)(1)
+                assert str(error.info) == "no such table: key_checkpoint"

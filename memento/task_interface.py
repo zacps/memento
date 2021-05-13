@@ -29,7 +29,7 @@ class Context:
 
     """
 
-    def __init__(self, key, cache_provider: CacheProvider):
+    def __init__(self, key: str, cache_provider: CacheProvider):
         """
         Each context is associated with exactly one task.
         """
