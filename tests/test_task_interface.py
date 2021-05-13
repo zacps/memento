@@ -39,7 +39,7 @@ class TestContext:
 
             # Need to pass an object by reference to track the number of calls
             # This is a workaround as Mocks cannot be pickled/unpickled
-            def expensive_thing(calls: list[int]):
+            def expensive_thing(calls: []):
                 calls.append(1)
 
             cache_provider = FileSystemCacheProvider(
