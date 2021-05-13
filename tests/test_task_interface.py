@@ -1,3 +1,5 @@
+import time
+
 from memento.task_interface import Context
 
 
@@ -40,6 +42,7 @@ class TestContext:
         def test_record_records_multiple_values_at_different_timestamps(self):
             context = Context("key")
             context.record("name1", 1.0)
+            time.sleep(0.001)
             context.record("name2", 2.0)
 
             metrics = context.collect_metrics()
@@ -56,4 +59,20 @@ class TestContext:
 
             assert expected_y_values_1 == actual_y_values_1
             assert expected_y_values_2 == actual_y_values_2
-            assert x_values_1 == x_values_2
+            assert x_values_1 != x_values_2
+
+        def test_record_records_x_and_y_when_given_a_tuple(self):
+            context = Context("key")
+            context.record("name1", (1.0, 2.0))
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name1")
+
+            expected_y_values = [2.0]
+            actual_y_values = list(metrics["name1"]["y"])
+            expected_x_values = [1.0]
+            actual_x_values = list(metrics["name1"]["x"])
+
+            assert expected_y_values == actual_y_values
+            assert expected_x_values == actual_x_values

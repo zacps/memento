@@ -6,12 +6,13 @@ with the user code
 import datetime
 import time
 from collections import namedtuple
-from typing import Any, Optional
+from typing import Any, Optional, Union, Tuple
 import pandas as pd
 from pandas import DataFrame
 from memento.configurations import Config
 
 Metric = namedtuple("Metric", 'x y')
+
 
 class Context:
     """
@@ -34,7 +35,8 @@ class Context:
 
         return metrics
 
-    def record(self, metric_name: str = None, value: float = None, value_dict: dict[str, float] = None):
+    def record(self, metric_name: str = None, value: Union[float, Tuple[float, float]] = None,
+               value_dict: dict[str, float] = None):
         supplied_no_values = (metric_name is None or value is None) and value_dict
         supplied_two_types_of_values = value is not None and value_dict is not None
 
@@ -44,9 +46,17 @@ class Context:
             raise ValueError("Must supply only one of (name, value) or value_dict.")
 
         name_value_mapping: dict[str, float] = value_dict or {metric_name: value}
-        timestamp = time.time()
+        x_value = time.time()
+
         for name in name_value_mapping.keys():
-            metric = Metric(timestamp, name_value_mapping[name])
+            y_value = name_value_mapping[name]
+
+            # Handles the case of a tuple
+            if isinstance(y_value, Tuple):
+                x_value = y_value[0]
+                y_value = y_value[1]
+
+            metric = Metric(x_value, y_value)
             if self._metrics.get(name, False):
                 self._metrics[name].append(metric)
             else:
