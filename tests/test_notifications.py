@@ -185,7 +185,9 @@ class TestEmailNotificationProviderWithServer:
         assert len(self.server.messages) == 1
 
     def test_sends_emails_in_parallel(self):
-        manager = TaskManager(notification_provider=self.provider)
+        manager = TaskManager(
+            notification_provider=self.provider, notify_on_complete=True
+        )
         manager.add_task(delayed(lambda x: print(x))("Hello World!"))
         manager.run()
         assert len(self.server.messages) == 2
