@@ -6,7 +6,7 @@ authors = ["Zac Pullar-Strecker <zacmps@gmail.com>", "Joshua de Wet", "Liam Scot
 license = "MIT/Apache 2.0"
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.6"
 cloudpickle = "^1.6.0"
 pandas = "^1.2.4"
 
@@ -16,11 +16,17 @@ pylint = "^2.7.2"
 pytest = "^6.2.2"
 Sphinx = "^3.5.3"
 mypy = "^0.812"
+aiosmtpd = "^1.4.2"
 
 [tool.pylint.miscellaneous]
 # Allow TODO notes
 notes = "FIXME,XXX"
 disable = ["too-many-instance-attributes", "too-few-public-methods"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow"
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
