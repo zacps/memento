@@ -7,6 +7,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Callable, List, Optional
+from networkx import DiGraph, is_directed_acyclic_graph, topological_sort
 
 import cloudpickle
 
@@ -14,7 +15,7 @@ from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
 from memento.task_interface import Context, Result
-from memento.exceptions import CacheMiss
+from memento.exceptions import CacheMiss, CyclicDependency
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,25 @@ class Memento:
 
         :param kwargs: keyword arguments to Memento.run
         """
-        matrices = self._matrices  # replace with actual ordering
+
+        # Construct graph representation of matrices
+
+        graph_edges = []
+
+        for matrix in self._matrices:
+            graph_edges.append(tuple([matrix["id"]] + matrix["dependencies"]))
+
+        graph = DiGraph()
+        graph.add_edges_from(graph_edges)
+
+        # Validate graph
+
+        if not is_directed_acyclic_graph(graph):
+            raise CyclicDependency()
+
+        # Get execution order via a topological sort
+
+        matrices = topological_sort(graph)
 
         n_matrices = len(matrices)
 
