@@ -31,7 +31,7 @@ class Memento:
         :param func: Your experiment code. This will be called with an experiment configuration.
         """
         self.func = func
-        self._matrices: List[dict] = [];
+        self._matrices: List[dict] = []
 
     def add_matrix(self, matrix: dict):
         """
@@ -67,18 +67,23 @@ class Memento:
 
         matrices = topological_sort(graph)
 
-        # Run the first matrix
-        matrix = matrices.pop(0)
+        n_matrices = len(matrices)
 
-        results = self.run(matrix, **kwargs)
-        results = [result.inner for result in results]
+        # Run each matrix
+        for i in range(n_matrices):
+            matrix = matrices[i]
+            results = self.run(matrix, **kwargs)
 
+            # If this is the last matrix, just return it's results
+            if i == n_matrices - 1:
+                return results
 
-        # Update all matrices that depend on the matrix that was just run
+            inners = [result.inner for result in results]
 
-        # Run the next matrix, etc
-
-        # Returns the results of the last matrix
+            # Update all matrices that depend on the matrix that was just run
+            for mat in matrices[i+1:]:
+                if matrix['id'] in mat['dependencies']:
+                    mat['dependencies'][matrix['id']] = inners
 
     def run(  # pylint: disable=too-many-arguments
             self,
