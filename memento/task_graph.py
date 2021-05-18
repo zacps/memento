@@ -35,4 +35,33 @@ class TaskGraph:
         return self._nodes[item]
 
 
+"""
+
+{
+    id: 1,
+    params: {
+        foo: [a, b, c]
+    }
+}
+=> outputs are 1, 2, 3
+
+{
+    dependencies: [1],
+    params: {
+        boo: [d, e, f]
+    }
+}
+
+translates into:
+
+{
+    params: {
+        1: [1, 2, 3],
+        boo: [d, e, f]        
+    }
+}
+
+"""
+
+
 

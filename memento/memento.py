@@ -30,14 +30,44 @@ class Memento:
         :param func: Your experiment code. This will be called with an experiment configuration.
         """
         self.func = func
+        self._matrices: List[dict] = [];
+
+    def add_matrix(self, matrix: dict):
+        """
+        Adds a configuration matrix.
+
+        :param matrix: A configuration matrix
+        """
+        self._matrices.append(matrix)
+
+    def run_all(self, **kwargs):
+        """
+        Runs this objects configuration matrices and returns it's results.
+
+        :param kwargs: keyword arguments to Memento.run
+        """
+        matrices = self._matrices  # replace with actual ordering
+
+        # Run the first matrix
+        matrix = matrices.pop(0)
+
+        results = self.run(matrix, **kwargs)
+        results = [result.inner for result in results]
+
+
+        # Update all matrices that depend on the matrix that was just run
+
+        # Run the next matrix, etc
+
+        # Returns the results of the last matrix
 
     def run(  # pylint: disable=too-many-arguments
-        self,
-        matrix: dict,
-        dry_run: bool = False,
-        force_run: bool = False,
-        force_cache: bool = False,
-        cache_path: str = None,
+            self,
+            matrix: dict,
+            dry_run: bool = False,
+            force_run: bool = False,
+            force_cache: bool = False,
+            cache_path: str = None,
     ) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
@@ -64,9 +94,9 @@ class Memento:
 
         cache = FileSystemCacheProvider(
             filepath=(
-                cache_path
-                or os.environ.get("MEMENTO_CACHE_PATH", None)
-                or "memento.sqlite"
+                    cache_path
+                    or os.environ.get("MEMENTO_CACHE_PATH", None)
+                    or "memento.sqlite"
             ),
             key=_key,
         )
@@ -95,7 +125,7 @@ class Memento:
             "%s/%s results retrieved from cache",
             len(configs) - len(ran),
             len(configs),
-        )
+            )
 
         return results
 
