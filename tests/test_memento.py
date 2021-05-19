@@ -79,7 +79,6 @@ class TestMemento:
         assert [result.inner['1']['k1'] for result in results] == [1, 2, 3]
         assert [result.inner['k1'] for result in results] == ['a', 'a', 'a']
 
-    @pytest.mark.slow
     def test_run_multiple_dry(self):
         def func(context, config):
             raise Exception("should not be called")
