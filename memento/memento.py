@@ -53,7 +53,8 @@ class Memento:
         graph_edges = []
 
         for matrix in self._matrices:
-            graph_edges.append(tuple([matrix["id"]] + matrix["dependencies"]))
+            for dependency in matrix["dependencies"]:
+                graph_edges.append(tuple([matrix["id"], dependency]))
 
         graph = DiGraph()
         graph.add_edges_from(graph_edges)
