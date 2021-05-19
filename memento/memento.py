@@ -75,7 +75,7 @@ class Memento:
         for i in range(n_matrices):
             matrix = matrices[i]
 
-            if kwargs['dry_run']:
+            if kwargs.get('dry_run'):
                 configs = configurations(matrix)
 
                 logger.info(f"Running configurations for matrix '{matrix['id']}':")
