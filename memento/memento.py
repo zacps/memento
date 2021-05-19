@@ -66,25 +66,39 @@ class Memento:
 
         # Get execution order via a topological sort
 
-        matrices = topological_sort(graph)
+        id_matrix_map = {matrix['id']: matrix for matrix in self._matrices}
+        matrices = [id_matrix_map[id_] for id_ in  list(topological_sort(graph))[::-1]]
 
         n_matrices = len(matrices)
 
         # Run each matrix
         for i in range(n_matrices):
             matrix = matrices[i]
-            results = self.run(matrix, **kwargs)
 
-            # If this is the last matrix, just return it's results
-            if i == n_matrices - 1:
-                return results
+            if kwargs['dry_run']:
+                configs = configurations(matrix)
 
-            inners = [result.inner for result in results]
+                logger.info(f"Running configurations for matrix '{matrix['id']}':")
+                for config in configs:
+                    logger.info("  %s", config)
+
+                if i == n_matrices - 1:
+                    logger.info("Exiting due to dry run")
+                    return
+
+                inners = list(configs)
+            else:
+                results = self.run(matrix, **kwargs)
+
+                if i == n_matrices - 1:
+                    return results
+
+                inners = [result.inner for result in results]
 
             # Update all matrices that depend on the matrix that was just run
             for mat in matrices[i+1:]:
                 if matrix['id'] in mat['dependencies']:
-                    mat['dependencies'][matrix['id']] = inners
+                    mat['parameters'][str(matrix['id'])] = inners
 
     def run(  # pylint: disable=too-many-arguments
             self,
