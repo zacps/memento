@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 
@@ -49,3 +50,58 @@ class TestMemento:
         results = memento.run(matrix, cache_path=self._filepath)
         assert [result.inner for result in results] == ["v1", "v2", "v3"]
         assert [result.was_cached for result in results] == [True, True, False]
+
+    @pytest.mark.slow
+    def test_run_multiple(self):
+        def func(context, config):
+            return config.asdict()
+
+        memento = Memento(func)
+
+        memento.add_matrix({
+            "id": 2,
+            "dependencies": [1],
+            "parameters": {
+                "k1": ['a']
+            }
+        })
+
+        memento.add_matrix({
+            "id": 1,
+            "dependencies": [],
+            "parameters": {
+                "k1": [1, 2, 3]
+            }
+        })
+
+        results = memento.run_all(cache_path=self._filepath)
+        assert all('1' in result.inner for result in results)
+        assert [result.inner['1']['k1'] for result in results] == [1, 2, 3]
+        assert [result.inner['k1'] for result in results] == ['a', 'a', 'a']
+
+    def test_run_multiple_dry(self):
+        def func(context, config):
+            raise Exception("should not be called")
+
+        memento = Memento(func)
+
+        memento.add_matrix({
+            "id": 2,
+            "dependencies": [1],
+            "parameters": {
+                "k1": ['a']
+            }
+        })
+
+        memento.add_matrix({
+            "id": 1,
+            "dependencies": [],
+            "parameters": {
+                "k1": [1, 2, 3]
+            }
+        })
+
+        results = memento.run_all(cache_path=self._filepath, dry_run=True)
+        assert results is None
+
+
