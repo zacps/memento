@@ -1,9 +1,10 @@
-import sqlite3
-from unittest.mock import Mock, MagicMock
+from sqlite3 import Connection
+from unittest.mock import Mock
 import pytest
-from memento.caching import CacheProvider, FileSystemCacheProvider, default_key_provider
-from memento.memento import remove_checkpoints
-from memento.task_interface import Context
+from memento.task_interface import Context, FileSystemCheckpointing
+import os
+import tempfile
+import cloudpickle
 
 
 def constant_key_provider(
@@ -16,93 +17,86 @@ def arbitrary_expensive_thing(x):
     return x
 
 
+def arbitrary_expensive_thing2(x):
+    return x + 1
+
+
 class TestContext:
     class TestCheckpoint:
-        def test_checkpoint_doesnt_call_function_if_in_cache(self):
-            expensive_thing = MagicMock()
-
-            cache_provider = Mock(spec_set=CacheProvider)
-            cache_provider.make_key = constant_key_provider
-            cache_provider.get.return_value = expensive_thing
-
-            context = Context("key", cache_provider)
-
-            def experiment():
-                return context.checkpoint(expensive_thing)()
-
-            experiment()
-
-            expensive_thing.assert_not_called()
-
-        def test_checkpoint_calls_underlying_function_once(self):
-            total_calls = []
-
-            # Need to pass an object by reference to track the number of calls
-            # This is a workaround as Mocks cannot be pickled/unpickled
-            def expensive_thing(calls: []):
-                calls.append(1)
-
-            cache_provider = FileSystemCacheProvider(
-                key_provider=constant_key_provider, table_name="checkpoint"
+        def setup_method(self, method):
+            file = tempfile.NamedTemporaryFile(
+                suffix="_memento.checkpoint", delete=False
             )
-            context = Context("key", cache_provider)
+            self._filepath = os.path.abspath(file.name)
+            file.close()
 
-            def experiment():
-                context.checkpoint(expensive_thing)(total_calls)
+        def teardown_method(self, method):
+            os.unlink(self._filepath)
 
-            experiment()
-            experiment()
+        def test_file_system_checkpoint_provider_checkpoint_works(self):
+            checkpoint_provider = FileSystemCheckpointing()
+            intermediate = arbitrary_expensive_thing(1)
+            context = Context("key", checkpoint_provider)
 
-            assert len(total_calls) == 1
+            context.checkpoint(intermediate)
 
-        def test_checkpoint_saves_multiple_checkpoints(self):
+            assert checkpoint_provider.contains("key")
 
-            cache_provider = FileSystemCacheProvider(table_name="checkpoint")
-            context = Context("key", cache_provider)
+        def test_file_system_checkpoint_provider_restore_works(self):
+            checkpoint_provider = FileSystemCheckpointing()
+            intermediate = arbitrary_expensive_thing(1)
+            context = Context("key", checkpoint_provider)
 
-            def experiment():
-                context.checkpoint(arbitrary_expensive_thing)(1)
-                context.checkpoint(arbitrary_expensive_thing)(2)
+            context.checkpoint(intermediate)
+            value = context.restore()
 
-            experiment()
+            assert value == 1
 
-            assert cache_provider.contains(
-                default_key_provider(arbitrary_expensive_thing, 1)
+        def test_file_system_checkpoint_provider_checkpoint_removed(self):
+            checkpoint_provider = FileSystemCheckpointing()
+            intermediate = arbitrary_expensive_thing(1)
+            context = Context("key", checkpoint_provider)
+
+            context.checkpoint(intermediate)
+            context.remove_checkpoints("key")
+
+            assert checkpoint_provider.contains("key") is False
+
+        def test_file_system_checkpoint_provider_creates_correct_keys(self):
+            def function(*args):
+                return args
+
+            context_key = "key"
+            arguments = ("test1", "test2", 123, True)
+            keyword_arguments = {
+                "key1": "value1",
+                "key2": "value2",
+                "key3": 321,
+                "key4": False,
+            }
+            expected = cloudpickle.dumps(
+                {
+                    "function": function,
+                    "context_key": context_key,
+                    "args": arguments,
+                    "kwargs": keyword_arguments,
+                }
             )
-            assert cache_provider.contains(
-                default_key_provider(arbitrary_expensive_thing, 2)
+
+            connection = Mock(spec_set=Connection)
+            checkpoint_provider = FileSystemCheckpointing(connection=connection)
+            actual = checkpoint_provider.make_key(
+                function, context_key, *arguments, **keyword_arguments
             )
 
-        def test_checkpoint_cleans_up(self):
-            cache_provider = FileSystemCacheProvider(table_name="key_checkpoint")
-            context = Context("key", cache_provider)
+            assert expected == actual
 
-            def experiment():
-                context.checkpoint(arbitrary_expensive_thing)(1)
-                context.checkpoint(arbitrary_expensive_thing)(2)
+        def test_file_system_checkpoint_provider_get_raises_key_error_when_key_not_in_database(
+            self,
+        ):
+            connection = Mock(spec_set=Connection)
+            connection.execute().fetchall.return_value = None
+            checkpoint_provider = FileSystemCheckpointing(connection=connection)
 
-            experiment()
-            remove_checkpoints(cache_provider, "key")
-
-            with pytest.raises(sqlite3.OperationalError) as error:
-                context.checkpoint(arbitrary_expensive_thing)(1)
-                assert str(error.info) == "no such table: key_checkpoint"
-
-        def test_multiple_checkpoint_deletion(self):
-            cache_provider = FileSystemCacheProvider(table_name="key_checkpoint")
-            context = Context("key", cache_provider)
-            cache_provider_2 = FileSystemCacheProvider(table_name="key2_checkpoint")
-            context_2 = Context("key2", cache_provider_2)
-
-            def experiment():
-                context.checkpoint(arbitrary_expensive_thing)(1)
-                context_2.checkpoint(arbitrary_expensive_thing)(1)
-
-            experiment()
-            remove_checkpoints(cache_provider, "key")
-            remove_checkpoints(cache_provider_2, "key2")
-
-            with pytest.raises(sqlite3.OperationalError) as error:
-                context.checkpoint(arbitrary_expensive_thing)(1)
-                context_2.checkpoint(arbitrary_expensive_thing)(1)
-                assert str(error.info) == "no such table: key_checkpoint"
+            with pytest.raises(KeyError) as error_info:
+                checkpoint_provider.get("not_in_checkpoint")

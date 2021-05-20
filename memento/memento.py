@@ -13,7 +13,7 @@ import cloudpickle
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
-from memento.task_interface import Context, Result
+from memento.task_interface import Context, Result, FileSystemCheckpointing
 from memento.exceptions import CacheMiss
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class Memento:
         """
         self.func = func
 
-    def run(  # pylint: disable=too-many-arguments
+    def run(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         matrix: dict,
         dry_run: bool = False,
@@ -70,6 +70,11 @@ class Memento:
             ),
             key_provider=_key_provider,
         )
+
+        checkpoint_provider = FileSystemCheckpointing(
+            filepath=(cache_path or "memento.sqlite"),
+            key=_key_provider,
+        )
         manager = TaskManager()
 
         # Run tasks for which we have no cached result
@@ -79,7 +84,7 @@ class Memento:
             if not cache_provider.contains(key) or force_run:
                 if force_cache:
                     raise CacheMiss(config)
-                context = Context(key, cache_provider)
+                context = Context(key, checkpoint_provider)
                 manager.add_task(
                     delayed(_wrapper(self.func)(context, config, cache_provider))
                 )
@@ -90,6 +95,9 @@ class Memento:
         results = [
             cache_provider.get(_key_provider(self.func, config)) for config in configs
         ]
+
+        for config in configs:
+            checkpoint_provider.remove(_key_provider(self.func, config))
 
         for result in results:
             if result.config in ran:
@@ -102,15 +110,6 @@ class Memento:
         )
 
         return results
-
-
-def remove_checkpoints(cache_provider: CacheProvider, key: str):
-    """
-    Remove checkpoints in order to save space in database
-    """
-    if isinstance(cache_provider, FileSystemCacheProvider):
-        with cache_provider as database:
-            database.execute(f"DROP table {key}_checkpoint")
 
 
 def _wrapper(func: Callable) -> Callable:
@@ -140,6 +139,7 @@ def _wrapper(func: Callable) -> Callable:
             was_cached=True,
         )
         cache_provider.set(context.key, result)
+        context.checkpoint(result)
         return result
 
     return inner
