@@ -16,6 +16,9 @@ a check job, which in turn triggers the next main job.
 import sys
 import subprocess
 import csv
+import time
+from uuid import uuid4
+from itertools import chain
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, List
@@ -26,7 +29,10 @@ from simple_slurm import Slurm
 from memento.configurations import Config
 
 
-def run_slurm(func: Callable, args_list: List[List[Any]]):
+JOB_POLL_TIME = 10
+
+
+def run_slurm(func: Callable, args_list: List[List[Any]], blocking=True):
     """
     Submit a list of jobs to slurm.
     """
@@ -34,14 +40,19 @@ def run_slurm(func: Callable, args_list: List[List[Any]]):
     # pickle function and arguments to temp files
     files = (NamedTemporaryFile("wb", delete=False) for _ in args_list)
 
+    ids = []
     for args, file in zip(args_list, files):
         config = args[1]
-        cloudpickle.dump({"func": func, "args": args}, file)
+        internal_id = uuid4()
+        cloudpickle.dump({"func": func, "args": args, "id": internal_id}, file)
 
-        _submit_job(file, config)
+        ids.append(_submit_job(file, config, internal_id))
+
+    if blocking:
+        __wait_jobs(ids)
 
 
-def _submit_job(file, config):
+def _submit_job(file, config: Config, internal_id: str):
     """
     Submit a single job to slurm.
     """
@@ -49,6 +60,7 @@ def _submit_job(file, config):
         cpus_per_task=config.runtime["cpus"],
         mem_per_cpu=config.runtime["mem_per_cpu"],
         job_name=config.runtime.get("jobname", "memento"),
+        comment=internal_id,
         output=config.runtime["output"],  # FIXME: Default to something sensible
     )
     # pass path to funcion and arguments
@@ -57,6 +69,8 @@ def _submit_job(file, config):
         {sys.executable} {__file__} {file.name}
         """
     )
+
+    return internal_id
 
 
 def _submit_check(filename: str, config: Config):
@@ -79,6 +93,58 @@ def _submit_check(filename: str, config: Config):
     )
 
 
+def __wait_jobs(ids):
+    """
+    Poll waiting for slurm jobs to complete. Because jobs timeout and are restarted the Slurm job
+    IDs are not stable. Instead we make use of the job comment field (arbitrary text) to pass an
+    internal ID. This internal ID is used to determine if a task has completed.
+    """
+    while True:
+        out = subprocess.run(
+            [
+                "sacct",
+                "-X",
+                "-P",
+                "-S",
+                "now-48hour",
+                "--format",
+                "jobid,state,elapsed,start,comment%36",
+            ],
+            stdout=subprocess.PIPE,
+            encoding="utf-8",
+        )
+        jobs = csv.DictReader(out.stdout.splitlines(), delimiter="|")
+
+        if all(job["STATE"] == "COMPLETED" for job in jobs):
+            return
+
+        seen_ids = {}
+        for job in jobs[::-1]:
+            # Jobs are returned in order from oldest start time first.
+            # This stops us from considering earlier jobs for a particular task.
+            if job["Comment"] in seen_ids:
+                continue
+            seen_ids.insert(job["Comment"])
+
+            if job["STATE"] == "FAILED":
+                # TODO: Give the node on which the job failed
+                raise Exception(f"Job {job['JobID']} FAILED after {job['Elapsed']}")
+            # State can be 'CANCELLED by ...'
+            if "CANCELLED" in job["STATE"]:
+                # TODO: Give the node on which the job failed
+                raise Exception(
+                    f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
+                )
+            # TODO: This should be handled by the check script (expand memory allowance up to some maximum and resubmit)
+            if "OUT_OF_MEMORY" in job["STATE"]:
+                # TODO: Give the node on which the job failed
+                raise Exception(
+                    f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
+                )
+
+        time.sleep(JOB_POLL_TIME)
+
+
 def _run_check(file, data, job_id):
     """
     Check the exit status of the main job. Restart it if it timed out.
@@ -95,7 +161,7 @@ def _run_check(file, data, job_id):
         # We're done
         pass
     elif state == "TIMEOUT":
-        _submit_job(file, data["args"][1])
+        _submit_job(file, data["args"][1], data["id"])
     else:
         # An unexpected error occured
         pass
