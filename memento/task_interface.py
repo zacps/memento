@@ -6,7 +6,7 @@ with the user code
 import datetime
 import time
 from collections import namedtuple
-from typing import Any, Optional, Union, Tuple
+from typing import Any, Optional, Union, Tuple, Dict, List
 import pandas as pd
 from pandas import DataFrame
 from memento.configurations import Config
@@ -20,7 +20,7 @@ class Context:
     progress reporting, and more available to tasks.
     """
 
-    _metrics: dict[str, list[Metric]]
+    _metrics: Dict[str, List[Metric]]
 
     def __init__(self, key):
         """
@@ -29,18 +29,18 @@ class Context:
         self.key = key
         self._metrics = {}
 
-    def collect_metrics(self) -> dict[str, pd.DataFrame]:
+    def collect_metrics(self) -> Dict[str, pd.DataFrame]:
         """
         Collects all of the metrics as dataframes.
         :return: A dictionary of metric names that map to Pandas Dataframes.
         """
-        metrics: dict[str, DataFrame] = {}
+        metrics: Dict[str, DataFrame] = {}
         for name in self._metrics.keys():
             metrics[name] = pd.DataFrame(self._metrics[name])
 
         return metrics
 
-    def record(self, value_dict: dict[str, Union[float, Tuple[float, float]]]) -> None:
+    def record(self, value_dict: Dict[str, Union[float, Tuple[float, float]]]) -> None:
         """
         Records a floating point metric in one of the following formats.
         Default x value is a timestamp.
@@ -123,7 +123,7 @@ class Result:
 
     inner: Any
 
-    metrics: list[pd.DataFrame]
+    metrics: List[pd.DataFrame]
 
     "The start time of the task."
     start_time: datetime.datetime
@@ -142,7 +142,7 @@ class Result:
         self,
         config,
         inner,
-        metrics: list[pd.DataFrame],
+        metrics: List[pd.DataFrame],
         start_time: datetime.datetime,
         runtime: datetime.timedelta,
         cpu_time: Optional[datetime.timedelta],
