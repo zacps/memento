@@ -11,6 +11,7 @@ from networkx import DiGraph, is_directed_acyclic_graph, topological_sort
 
 import cloudpickle
 
+from memento.notifications import NotificationProvider, DefaultNotificationProvider
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
@@ -26,11 +27,14 @@ class Memento:
     configuration matrix and retrieve results from your experiments.
     """
 
-    def __init__(self, func: Callable):
+    def __init__(self, func: Callable, notification_provider: NotificationProvider = None):
         """
         :param func: Your experiment code. This will be called with an experiment configuration.
+        :param notification_provider: Notification provider to use. If not specified, no
+            notifications will be emitted.
         """
         self.func = func
+        self._notification_provider = notification_provider or DefaultNotificationProvider()
         self._matrices: List[dict] = []
 
     def add_matrix(self, matrix: dict):
@@ -67,7 +71,7 @@ class Memento:
         # Get execution order via a topological sort
 
         id_matrix_map = {matrix['id']: matrix for matrix in self._matrices}
-        matrices = [id_matrix_map[id_] for id_ in  list(topological_sort(graph))[::-1]]
+        matrices = [id_matrix_map[id_] for id_ in list(topological_sort(graph))[::-1]]
 
         n_matrices = len(matrices)
 
@@ -88,9 +92,10 @@ class Memento:
 
                 inners = list(configs)
             else:
-                results = self.run(matrix, **kwargs)
+                results = self.run(matrix, **kwargs, notify_on_complete=False)
 
                 if i == n_matrices - 1:
+                    self._notification_provider.all_tasks_completed()
                     return results
 
                 inners = [result.inner for result in results]
@@ -100,6 +105,7 @@ class Memento:
                 if matrix['id'] in mat['dependencies']:
                     mat['parameters'][str(matrix['id'])] = inners
 
+
     def run(  # pylint: disable=too-many-arguments
             self,
             matrix: dict,
@@ -107,6 +113,7 @@ class Memento:
             force_run: bool = False,
             force_cache: bool = False,
             cache_path: str = None,
+            notify_on_complete: bool = True
     ) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
@@ -118,6 +125,8 @@ class Memento:
             cache
         :param cache_path: Path to save results. This defaults to the current working directory and
             can also be specified using ``MEMENTO_CACHE_PATH``.
+        :param notify_on_complete: If true, a notification will be triggered when all tasks have
+            been run.
         :returns: A list of results from your experiments.
         """
 
@@ -139,7 +148,10 @@ class Memento:
             ),
             key=_key,
         )
-        manager = TaskManager()
+        manager = TaskManager(
+            notification_provider=self._notification_provider,
+            notify_on_complete=notify_on_complete
+        )
 
         # Run tasks for which we have no cached result
         ran = []

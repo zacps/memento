@@ -1,10 +1,16 @@
-import logging
 import os
 import tempfile
 
 import pytest
 
 from memento.memento import Memento
+from memento.notifications import FileSystemNotificationProvider
+
+
+def _create_file(suffix: str = None):
+    file = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+    file.close()
+    return os.path.abspath(file.name)
 
 
 class TestMemento:
@@ -12,12 +18,12 @@ class TestMemento:
         # This is ugly, but sqlite3 doesn't seem to accept a file handle directly, so we need to
         # create a temporary file, close it (to not run afoul of locking on windows), then manually
         # remove it after we're done.
-        file = tempfile.NamedTemporaryFile(suffix="_memento.cache", delete=False)
-        self._filepath = os.path.abspath(file.name)
-        file.close()
+        self._cache_filepath = _create_file("_memento.cache")
+        self._notification_filepath = _create_file("_memento.notifications")
 
     def teardown_method(self, method):
-        os.unlink(self._filepath)
+        os.unlink(self._cache_filepath)
+        os.unlink(self._notification_filepath)
 
     @pytest.mark.slow
     def test_memento(self):
@@ -26,7 +32,7 @@ class TestMemento:
 
         memento = Memento(func)
         matrix = {"parameters": {"k1": ["v1", "v2", "v3"]}}
-        results = memento.run(matrix, cache_path=self._filepath)
+        results = memento.run(matrix, cache_path=self._cache_filepath)
         assert [result.inner for result in results] == ["v1", "v2", "v3"]
 
     def test_dry_run(self):
@@ -35,7 +41,7 @@ class TestMemento:
 
         memento = Memento(func)
         matrix = {"parameters": {"k1": ["v1", "v2", "v3"]}}
-        results = memento.run(matrix, cache_path=self._filepath, dry_run=True)
+        results = memento.run(matrix, cache_path=self._cache_filepath, dry_run=True)
         assert results is None
 
     @pytest.mark.slow
@@ -45,9 +51,9 @@ class TestMemento:
 
         memento = Memento(func)
         matrix = {"parameters": {"k1": ["v1", "v2"]}}
-        results = memento.run(matrix, cache_path=self._filepath)
+        results = memento.run(matrix, cache_path=self._cache_filepath)
         matrix = {"parameters": {"k1": ["v1", "v2", "v3"]}}
-        results = memento.run(matrix, cache_path=self._filepath)
+        results = memento.run(matrix, cache_path=self._cache_filepath)
         assert [result.inner for result in results] == ["v1", "v2", "v3"]
         assert [result.was_cached for result in results] == [True, True, False]
 
@@ -74,7 +80,7 @@ class TestMemento:
             }
         })
 
-        results = memento.run_all(cache_path=self._filepath)
+        results = memento.run_all(cache_path=self._cache_filepath)
         assert all('1' in result.inner for result in results)
         assert [result.inner['1']['k1'] for result in results] == [1, 2, 3]
         assert [result.inner['k1'] for result in results] == ['a', 'a', 'a']
@@ -101,7 +107,50 @@ class TestMemento:
             }
         })
 
-        results = memento.run_all(cache_path=self._filepath, dry_run=True)
+        results = memento.run_all(cache_path=self._cache_filepath, dry_run=True)
         assert results is None
+
+    def test_run_with_notification_provider(self):
+        def func(context, config):
+            return config.k1
+
+        notification_provider = FileSystemNotificationProvider(filepath=self._notification_filepath)
+        memento = Memento(func, notification_provider=notification_provider)
+        matrix = {"parameters": {"k1": ["v1"]}}
+        _ = memento.run(matrix, cache_path=self._cache_filepath)
+
+        with open(self._notification_filepath) as f:
+            assert f.readlines() == [
+                'Task completed\n',
+                'All tasks completed\n'
+            ]
+
+    def test_run_all_with_notification_provider(self):
+        def func(context, config):
+            return config.k1
+
+        notification_provider = FileSystemNotificationProvider(filepath=self._notification_filepath)
+        memento = Memento(func, notification_provider=notification_provider)
+
+        memento.add_matrix({
+            "id": 2,
+            "dependencies": [1],
+            "parameters": {
+                "k1": ['a']
+            }
+        })
+
+        memento.add_matrix({
+            "id": 1,
+            "dependencies": [],
+            "parameters": {
+                "k1": [1]
+            }
+        })
+
+        _ = memento.run_all(cache_path=self._cache_filepath)
+
+        with open(self._notification_filepath) as f:
+            assert f.readlines() == ['Task completed\n', 'Task completed\n', 'All tasks completed\n']
 
 

@@ -137,6 +137,7 @@ class TaskManager:
         workers: int = None,
         max_tasks_per_worker: int = None,
         notification_provider: NotificationProvider = None,
+        notify_on_complete: bool = False
     ):
         """
         Creates a TaskManager.
@@ -145,6 +146,8 @@ class TaskManager:
         :param max_tasks_per_worker: max number of tasks each worker process can execute before
             it's replaced by a new process
         :param notification_provider: notification provider to use
+        :param notify_on_complete: If true, a notification will be triggered when all tasks have
+            been run.
         """
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
@@ -154,6 +157,7 @@ class TaskManager:
         self._notification_provider = (
             notification_provider or DefaultNotificationProvider()
         )
+        self._notify_on_complete = notify_on_complete
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
@@ -203,6 +207,7 @@ class TaskManager:
         results.sort(key=lambda t: t[0])
         results = [cloudpickle.loads(item[1]) for item in results]
 
-        self._notification_provider.all_tasks_completed()
+        if self._notify_on_complete:
+            self._notification_provider.all_tasks_completed()
 
         return results
