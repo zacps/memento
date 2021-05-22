@@ -15,11 +15,17 @@ pylint = "^2.7.2"
 pytest = "^6.2.2"
 Sphinx = "^3.5.3"
 mypy = "^0.812"
+aiosmtpd = "^1.4.2"
 
 [tool.pylint.miscellaneous]
 # Allow TODO notes
 notes = "FIXME,XXX"
 disable = ["too-many-instance-attributes", "too-few-public-methods"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow"
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
