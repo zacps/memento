@@ -35,7 +35,7 @@ class Context:
         :return: A dictionary of metric names that map to Pandas Dataframes.
         """
         metrics: Dict[str, DataFrame] = {}
-        for name in self._metrics.keys():
+        for name in self._metrics:
             metrics[name] = pd.DataFrame(self._metrics[name])
 
         return metrics
