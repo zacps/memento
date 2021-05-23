@@ -110,6 +110,7 @@ class TestMemento:
         results = memento.run_all(cache_path=self._cache_filepath, dry_run=True)
         assert results is None
 
+    @pytest.mark.slow
     def test_run_with_notification_provider(self):
         def func(context, config):
             return config.k1
@@ -125,6 +126,7 @@ class TestMemento:
                 'All tasks completed\n'
             ]
 
+    @pytest.mark.slow
     def test_run_all_with_notification_provider(self):
         def func(context, config):
             return config.k1
