@@ -64,26 +64,16 @@ class TestMemento:
 
         memento = Memento(func)
 
-        memento.add_matrix({
-            "id": 2,
-            "dependencies": [1],
-            "parameters": {
-                "k1": ['a']
-            }
-        })
+        memento.add_matrix({"id": 2, "dependencies": [1], "parameters": {"k1": ["a"]}})
 
-        memento.add_matrix({
-            "id": 1,
-            "dependencies": [],
-            "parameters": {
-                "k1": [1, 2, 3]
-            }
-        })
+        memento.add_matrix(
+            {"id": 1, "dependencies": [], "parameters": {"k1": [1, 2, 3]}}
+        )
 
         results = memento.run_all(cache_path=self._cache_filepath)
-        assert all('1' in result.inner for result in results)
-        assert [result.inner['1']['k1'] for result in results] == [1, 2, 3]
-        assert [result.inner['k1'] for result in results] == ['a', 'a', 'a']
+        assert all("1" in result.inner for result in results)
+        assert [result.inner["1"]["k1"] for result in results] == [1, 2, 3]
+        assert [result.inner["k1"] for result in results] == ["a", "a", "a"]
 
     def test_run_multiple_dry(self):
         def func(context, config):
@@ -91,21 +81,11 @@ class TestMemento:
 
         memento = Memento(func)
 
-        memento.add_matrix({
-            "id": 2,
-            "dependencies": [1],
-            "parameters": {
-                "k1": ['a']
-            }
-        })
+        memento.add_matrix({"id": 2, "dependencies": [1], "parameters": {"k1": ["a"]}})
 
-        memento.add_matrix({
-            "id": 1,
-            "dependencies": [],
-            "parameters": {
-                "k1": [1, 2, 3]
-            }
-        })
+        memento.add_matrix(
+            {"id": 1, "dependencies": [], "parameters": {"k1": [1, 2, 3]}}
+        )
 
         results = memento.run_all(cache_path=self._cache_filepath, dry_run=True)
         assert results is None
@@ -115,44 +95,35 @@ class TestMemento:
         def func(context, config):
             return config.k1
 
-        notification_provider = FileSystemNotificationProvider(filepath=self._notification_filepath)
+        notification_provider = FileSystemNotificationProvider(
+            filepath=self._notification_filepath
+        )
         memento = Memento(func, notification_provider=notification_provider)
         matrix = {"parameters": {"k1": ["v1"]}}
         _ = memento.run(matrix, cache_path=self._cache_filepath)
 
         with open(self._notification_filepath) as f:
-            assert f.readlines() == [
-                'Task completed\n',
-                'All tasks completed\n'
-            ]
+            assert f.readlines() == ["Task completed\n", "All tasks completed\n"]
 
     @pytest.mark.slow
     def test_run_all_with_notification_provider(self):
         def func(context, config):
             return config.k1
 
-        notification_provider = FileSystemNotificationProvider(filepath=self._notification_filepath)
+        notification_provider = FileSystemNotificationProvider(
+            filepath=self._notification_filepath
+        )
         memento = Memento(func, notification_provider=notification_provider)
 
-        memento.add_matrix({
-            "id": 2,
-            "dependencies": [1],
-            "parameters": {
-                "k1": ['a']
-            }
-        })
+        memento.add_matrix({"id": 2, "dependencies": [1], "parameters": {"k1": ["a"]}})
 
-        memento.add_matrix({
-            "id": 1,
-            "dependencies": [],
-            "parameters": {
-                "k1": [1]
-            }
-        })
+        memento.add_matrix({"id": 1, "dependencies": [], "parameters": {"k1": [1]}})
 
         _ = memento.run_all(cache_path=self._cache_filepath)
 
         with open(self._notification_filepath) as f:
-            assert f.readlines() == ['Task completed\n', 'Task completed\n', 'All tasks completed\n']
-
-
+            assert f.readlines() == [
+                "Task completed\n",
+                "Task completed\n",
+                "All tasks completed\n",
+            ]

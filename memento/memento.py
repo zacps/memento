@@ -7,7 +7,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Callable, List, Optional
-from networkx import DiGraph, is_directed_acyclic_graph, topological_sort
+from networkx import DiGraph, is_directed_acyclic_graph, topological_sort  # type: ignore
 
 import cloudpickle
 
@@ -27,14 +27,18 @@ class Memento:
     configuration matrix and retrieve results from your experiments.
     """
 
-    def __init__(self, func: Callable, notification_provider: NotificationProvider = None):
+    def __init__(
+        self, func: Callable, notification_provider: NotificationProvider = None
+    ):
         """
         :param func: Your experiment code. This will be called with an experiment configuration.
         :param notification_provider: Notification provider to use. If not specified, no
             notifications will be emitted.
         """
         self.func = func
-        self._notification_provider = notification_provider or DefaultNotificationProvider()
+        self._notification_provider = (
+            notification_provider or DefaultNotificationProvider()
+        )
         self._matrices: List[dict] = []
 
     def add_matrix(self, matrix: dict):
@@ -70,7 +74,7 @@ class Memento:
 
         # Get execution order via a topological sort
 
-        id_matrix_map = {matrix['id']: matrix for matrix in self._matrices}
+        id_matrix_map = {matrix["id"]: matrix for matrix in self._matrices}
         matrices = [id_matrix_map[id_] for id_ in list(topological_sort(graph))[::-1]]
 
         n_matrices = len(matrices)
@@ -79,16 +83,16 @@ class Memento:
         for i in range(n_matrices):
             matrix = matrices[i]
 
-            if kwargs.get('dry_run'):
+            if kwargs.get("dry_run"):
                 configs = configurations(matrix)
 
-                logger.info(f"Running configurations for matrix '{matrix['id']}':")
+                logger.info("Running configurations for matrix '%s':", matrix["id"])
                 for config in configs:
                     logger.info("  %s", config)
 
                 if i == n_matrices - 1:
                     logger.info("Exiting due to dry run")
-                    return
+                    return None
 
                 inners = list(configs)
             else:
@@ -101,19 +105,20 @@ class Memento:
                 inners = [result.inner for result in results]
 
             # Update all matrices that depend on the matrix that was just run
-            for mat in matrices[i+1:]:
-                if matrix['id'] in mat['dependencies']:
-                    mat['parameters'][str(matrix['id'])] = inners
+            for mat in matrices[i + 1 :]:
+                if matrix["id"] in mat["dependencies"]:
+                    mat["parameters"][str(matrix["id"])] = inners
 
+        return None
 
-    def run(  # pylint: disable=too-many-arguments
-            self,
-            matrix: dict,
-            dry_run: bool = False,
-            force_run: bool = False,
-            force_cache: bool = False,
-            cache_path: str = None,
-            notify_on_complete: bool = True
+    def run(  # pylint: disable=too-many-arguments,too-many-locals
+        self,
+        matrix: dict,
+        dry_run: bool = False,
+        force_run: bool = False,
+        force_cache: bool = False,
+        cache_path: str = None,
+        notify_on_complete: bool = True,
     ) -> Optional[List[Result]]:
         """
         Run a configuration matrix and return it's results.
@@ -142,15 +147,15 @@ class Memento:
 
         cache = FileSystemCacheProvider(
             filepath=(
-                    cache_path
-                    or os.environ.get("MEMENTO_CACHE_PATH", None)
-                    or "memento.sqlite"
+                cache_path
+                or os.environ.get("MEMENTO_CACHE_PATH", None)
+                or "memento.sqlite"
             ),
             key=_key,
         )
         manager = TaskManager(
             notification_provider=self._notification_provider,
-            notify_on_complete=notify_on_complete
+            notify_on_complete=notify_on_complete,
         )
 
         # Run tasks for which we have no cached result
@@ -176,7 +181,7 @@ class Memento:
             "%s/%s results retrieved from cache",
             len(configs) - len(ran),
             len(configs),
-            )
+        )
 
         return results
 

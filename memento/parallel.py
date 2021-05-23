@@ -137,7 +137,7 @@ class TaskManager:
         workers: int = None,
         max_tasks_per_worker: int = None,
         notification_provider: NotificationProvider = None,
-        notify_on_complete: bool = False
+        notify_on_complete: bool = False,
     ):
         """
         Creates a TaskManager.
