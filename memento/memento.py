@@ -66,6 +66,7 @@ class Memento:
 
         graph = DiGraph()
         graph.add_edges_from(graph_edges)
+        graph.add_nodes_from(matrix['id'] for matrix in self._matrices)
 
         # Validate graph
 
