@@ -6,7 +6,7 @@ import functools
 import logging
 import os
 from datetime import datetime
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Dict, Any, cast
 from networkx import DiGraph, is_directed_acyclic_graph, topological_sort  # type: ignore
 
 import cloudpickle
@@ -49,13 +49,7 @@ class Memento:
         """
         self._matrices.append(matrix)
 
-    def run_all(self, **kwargs):
-        """
-        Runs this objects configuration matrices and returns it's results.
-
-        :param kwargs: keyword arguments to Memento.run
-        """
-
+    def _get_execution_order(self):
         # Construct graph representation of matrices
 
         graph_edges = []
@@ -66,7 +60,7 @@ class Memento:
 
         graph = DiGraph()
         graph.add_edges_from(graph_edges)
-        graph.add_nodes_from(matrix['id'] for matrix in self._matrices)
+        graph.add_nodes_from(matrix["id"] for matrix in self._matrices)
 
         # Validate graph
 
@@ -74,11 +68,23 @@ class Memento:
             raise CyclicDependency()
 
         # Get execution order via a topological sort
-
         id_matrix_map = {matrix["id"]: matrix for matrix in self._matrices}
         matrices = [id_matrix_map[id_] for id_ in list(topological_sort(graph))[::-1]]
+        return matrices
+
+    def run_all(self, **kwargs) -> Optional[Dict[Any, Optional[List[Result]]]]:
+        """
+        Runs this object's configuration matrices and returns their results.
+
+        :param kwargs: keyword arguments to Memento.run
+        """
+        matrices = self._get_execution_order()
 
         n_matrices = len(matrices)
+
+        results: Dict[Any, Optional[List[Result]]] = {
+            matrix["id"]: None for matrix in matrices
+        }
 
         # Run each matrix
         for i in range(n_matrices):
@@ -97,20 +103,23 @@ class Memento:
 
                 inners = list(configs)
             else:
-                results = self.run(matrix, **kwargs, notify_on_complete=False)
+                results[matrix["id"]] = self.run(
+                    matrix, **kwargs, notify_on_complete=False
+                )
 
                 if i == n_matrices - 1:
-                    self._notification_provider.all_tasks_completed()
-                    return results
+                    break
 
-                inners = [result.inner for result in results]
+                inners = [result.inner for result in cast(List, results[matrix["id"]])]
 
             # Update all matrices that depend on the matrix that was just run
             for mat in matrices[i + 1 :]:
                 if matrix["id"] in mat["dependencies"]:
                     mat["parameters"][str(matrix["id"])] = inners
 
-        return None
+        self._notification_provider.all_tasks_completed()
+
+        return results
 
     def run(  # pylint: disable=too-many-arguments,too-many-locals
         self,

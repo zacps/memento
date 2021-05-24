@@ -70,10 +70,23 @@ class TestMemento:
             {"id": 1, "dependencies": [], "parameters": {"k1": [1, 2, 3]}}
         )
 
+        # Matrix with no dependencies or dependants
+        memento.add_matrix(
+            {"id": 3, "dependencies": [], "parameters": {"k1": [4, 5, 6]}}
+        )
+
         results = memento.run_all(cache_path=self._cache_filepath)
-        assert all("1" in result.inner for result in results)
-        assert [result.inner["1"]["k1"] for result in results] == [1, 2, 3]
-        assert [result.inner["k1"] for result in results] == ["a", "a", "a"]
+
+        results_1 = results[1]
+        assert [result.inner["k1"] for result in results_1] == [1, 2, 3]
+
+        results_2 = results[2]
+        assert all("1" in result.inner for result in results_2)
+        assert [result.inner["1"]["k1"] for result in results_2] == [1, 2, 3]
+        assert [result.inner["k1"] for result in results_2] == ["a", "a", "a"]
+
+        results_3 = results[3]
+        assert [result.inner["k1"] for result in results_3] == [4, 5, 6]
 
     def test_run_multiple_dry(self):
         def func(context, config):
