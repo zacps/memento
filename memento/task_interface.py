@@ -194,12 +194,21 @@ class Context:
         """
         return self._checkpoint_provider.get(self.key)
 
-    def remove_checkpoints(self, key: str):
+    def remove_checkpoints(self, key: str = None):
         """
         Remove checkpoints in order to save space in database
-        :param key: Key of the checkpoint to be deleted
+        :param key: Key of the checkpoint to be deleted, if none given, delete the current key
         """
-        self._checkpoint_provider.remove(key)
+        if key is None:
+            self._checkpoint_provider.remove(self.key)
+        else:
+            self._checkpoint_provider.remove(key)
+
+    def checkpoint_exist(self):
+        """
+        Checks if checkpoint already exists
+        """
+        return self._checkpoint_provider.contains(self.key)
 
 
 class MemoryUsage:
