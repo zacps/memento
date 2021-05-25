@@ -10,16 +10,16 @@ from typing import Callable, List, TextIO, Iterable
 
 import cloudpickle
 
+from .notifications import DefaultNotificationProvider, NotificationProvider
+
 
 def delayed(func: Callable):
     """
     Creates a version of the given function that stores the arguments of it's first call.
 
-    ### Example:
+    ::
 
-    ```python
-    delayed(sum)([1, 2])() # Equivalent to calling sum([1, 2])
-    ```
+        delayed(sum)([1, 2])() # Equivalent to calling sum([1, 2])
     """
 
     def args_wrapper(*args, **kwargs):
@@ -60,11 +60,20 @@ class _PrefixedStream:
 
 
 class _Task:
-    def __init__(self, identifier: str, index: int, task: Callable, priority: int):
+    # pylint: disable=R0913
+    def __init__(
+        self,
+        identifier: str,
+        index: int,
+        task: Callable,
+        priority: int,
+        notification_provider: NotificationProvider,
+    ):
         self._identifier = identifier
         self._task = cloudpickle.dumps(task)
         self._priority = priority
         self._index = index
+        self._notification_provider = cloudpickle.dumps(notification_provider)
 
     @property
     def identifier(self):
@@ -78,7 +87,15 @@ class _Task:
 
     def run(self):
         """ Runs this task and returns it's result. """
-        return cloudpickle.dumps(cloudpickle.loads(self._task)())
+        notification_provider = cloudpickle.loads(self._notification_provider)
+
+        try:
+            task_return = cloudpickle.loads(self._task)()
+            notification_provider.task_completed()
+            return cloudpickle.dumps(task_return)
+        except Exception as exception:
+            notification_provider.task_failure()
+            raise exception
 
     def __lt__(self, other: "_Task"):
         """ Compares the priority between two tasks """
@@ -100,32 +117,53 @@ class TaskManager:
     """
     Provides a simple interface for running multiple tasks in parallel.
 
-    ### Examples
+    ::
 
-    ```python
-    manager = TaskManager()
-    manager.add_task(delayed(lambda x: print(x))("Hello World!"))
-    manager.run()
-    ```
+        manager = TaskManager()
+        manager.add_task(delayed(lambda x: print(x))("Hello World!"))
+        manager.run()
 
-    ```python
-    manager.add_task(delayed(sum)([1, 2]))
-    results = manager.run()
-    print(results)
-    ```
+    ::
+
+        manager.add_task(delayed(sum)([1, 2]))
+        results = manager.run()
+        print(results) # [3]
+
 
     """
 
-    def __init__(self, workers: int = None, max_tasks_per_worker: int = None):
+    def __init__(
+        self,
+        workers: int = None,
+        max_tasks_per_worker: int = None,
+        notification_provider: NotificationProvider = None,
+    ):
+        """
+        Creates a TaskManager.
+
+        :param workers: max number of worker processes
+        :param max_tasks_per_worker: max number of tasks each worker process can execute before
+            it's replaced by a new process
+        :param notification_provider: notification provider to use
+        """
         self._workers = workers
         self._max_tasks_per_worker = max_tasks_per_worker
         self._id_count: int = 0
         self._tasks: List[_Task] = []
         self._task_index = 0
+        self._notification_provider = (
+            notification_provider or DefaultNotificationProvider()
+        )
 
     def _create_task(self, callable_: Callable, priority_: int) -> _Task:
         self._id_count += 1
-        task = _Task(f"Task {self._id_count}", self._task_index, callable_, priority_)
+        task = _Task(
+            f"Task {self._id_count}",
+            self._task_index,
+            callable_,
+            priority_,
+            self._notification_provider,
+        )
         self._task_index += 1
         return task
 
@@ -164,5 +202,7 @@ class TaskManager:
 
         results.sort(key=lambda t: t[0])
         results = [cloudpickle.loads(item[1]) for item in results]
+
+        self._notification_provider.all_tasks_completed()
 
         return results

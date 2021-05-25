@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+import pytest
+
 from memento.memento import Memento
 
 
@@ -24,6 +26,7 @@ class TestMemento:
     def teardown_method(self, method):
         os.unlink(self._filepath)
 
+    @pytest.mark.slow
     def test_memento(self):
         def func(context, config):
             return config.k1
@@ -42,6 +45,7 @@ class TestMemento:
         results = memento.run(matrix, cache_path=self._filepath, dry_run=True)
         assert results is None
 
+    @pytest.mark.slow
     def test_was_cached(self):
         def func(context, config):
             return config.k1
