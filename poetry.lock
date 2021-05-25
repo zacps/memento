@@ -318,6 +318,17 @@ pytz = ">=2017.2"
 test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
+name = "pandas-stubs"
+version = "1.1.0.7"
+description = "Type annotations for Pandas"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""}
+
+[[package]]
 name = "pathspec"
 version = "0.8.1"
 description = "Utility library for gitignore style pattern matching of file paths."
@@ -583,7 +594,7 @@ python-versions = "*"
 name = "typing-extensions"
 version = "3.10.0.0"
 description = "Backported and Experimental Type Hints for Python 3.5+"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -623,7 +634,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=1.2.3)", "pytest-flake8", "pyt
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6"
-content-hash = "c7b976bf8222e2b115409c52c40248fc9f1298f1a50f52fc7f81e4d8ff7cb3fc"
+content-hash = "f95c06fcbc91c1caa04387882c15e39f7dc605b1ff5a7daf3c863e030f696604"
 
 [metadata.files]
 aiosmtpd = [
@@ -864,6 +875,10 @@ pandas = [
     {file = "pandas-0.25.3-cp38-cp38-win32.whl", hash = "sha256:6a3ac2c87e4e32a969921d1428525f09462770c349147aa8e9ab95f88c71ec71"},
     {file = "pandas-0.25.3-cp38-cp38-win_amd64.whl", hash = "sha256:33970f4cacdd9a0ddb8f21e151bfb9f178afb7c36eb7c25b9094c02876f385c2"},
     {file = "pandas-0.25.3.tar.gz", hash = "sha256:52da74df8a9c9a103af0a72c9d5fdc8e0183a90884278db7f386b5692a2220a4"},
+]
+pandas-stubs = [
+    {file = "pandas-stubs-1.1.0.7.tar.gz", hash = "sha256:1dce450bd06fc871111f2d8ef1aee97137d9d62869b1186637ab90469913ff93"},
+    {file = "pandas_stubs-1.1.0.7-py3-none-any.whl", hash = "sha256:c490c1fbf73c0248f48a5f9197a935843c5b3b43815d238d7ed33ff7593b0278"},
 ]
 pathspec = [
     {file = "pathspec-0.8.1-py2.py3-none-any.whl", hash = "sha256:aa0cb481c4041bf52ffa7b0d8fa6cd3e88a2ca4879c533c9153882ee2556790d"},

@@ -6,7 +6,7 @@ with the user code
 import datetime
 import time
 from collections import namedtuple
-from typing import Any, Optional, Union, Tuple, Dict, List
+from typing import Any, Optional, Union, Tuple, Dict, List, cast
 import pandas as pd
 from pandas import DataFrame
 from memento.configurations import Config
@@ -35,7 +35,7 @@ class Context:
         :return: A dictionary of metric names that map to Pandas Dataframes.
         """
         metrics: Dict[str, DataFrame] = {}
-        for name in self._metrics.keys():
+        for name in self._metrics:
             metrics[name] = pd.DataFrame(self._metrics[name])
 
         return metrics
@@ -62,13 +62,14 @@ class Context:
             y_value = value_dict[name]
 
             # Handles the case of a tuple
-            if isinstance(y_value, Tuple):
+            if type(y_value) is tuple:
+                y_value = cast(Tuple[float, float], y_value)
                 x_value = y_value[0]
                 y_value = y_value[1]
 
             # Type guards that shouldn't be triggered.
-            assert isinstance(x_value, float)
-            assert isinstance(y_value, float)
+            assert type(x_value) is float
+            assert type(y_value) is float
 
             metric = Metric(x_value, y_value)
             if self._metrics.get(name, False):
@@ -123,7 +124,7 @@ class Result:
 
     inner: Any
 
-    metrics: List[pd.DataFrame]
+    metrics: Dict[str, pd.DataFrame]
 
     "The start time of the task."
     start_time: datetime.datetime
@@ -142,7 +143,7 @@ class Result:
         self,
         config,
         inner,
-        metrics: List[pd.DataFrame],
+        metrics: Dict[str, pd.DataFrame],
         start_time: datetime.datetime,
         runtime: datetime.timedelta,
         cpu_time: Optional[datetime.timedelta],

@@ -117,7 +117,7 @@ def _wrapper(func: Callable) -> Callable:
         result = Result(
             config,
             inner,
-            None,
+            metrics=context.collect_metrics(),
             start_time=start_time,
             runtime=runtime,
             cpu_time=None,
