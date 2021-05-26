@@ -69,12 +69,7 @@ class TestMemento:
 
             intermediate2 = context.restore() + intermediate
 
-            context.remove_checkpoints()
-
-            if context.checkpoint_exist():
-                return intermediate
-            else:
-                return intermediate2
+            return intermediate2
 
         memento = Memento(func)
         matrix = {"parameters": {"k1": [1, 2]}}

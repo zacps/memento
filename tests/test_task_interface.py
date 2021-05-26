@@ -52,16 +52,6 @@ class TestContext:
 
             assert value == 1
 
-        def test_file_system_checkpoint_provider_checkpoint_removed(self):
-            checkpoint_provider = FileSystemCheckpointing()
-            intermediate = arbitrary_expensive_thing(1)
-            context = Context("key", checkpoint_provider)
-
-            context.checkpoint(intermediate)
-            context.remove_checkpoints("key")
-
-            assert checkpoint_provider.contains("key") is False
-
         def test_file_system_checkpoint_provider_creates_correct_keys(self):
             def function(*args):
                 return args
