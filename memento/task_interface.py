@@ -92,7 +92,9 @@ class FileSystemCheckpointing:
         :raise KeyError: When the key has not been checkpoint.
         """
         with self as database:
-            rows = database.execute(f"SELECT value FROM {self._table_name} WHERE key = ?", (key,)).fetchall()
+            rows = database.execute(
+                f"SELECT value FROM {self._table_name} WHERE key = ?", (key,)
+            ).fetchall()
             if rows:
                 return cloudpickle.loads(rows[0][0])[0]
 
@@ -107,7 +109,8 @@ class FileSystemCheckpointing:
         """
         with self as database:
             database.execute(
-                f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)", (key, cloudpickle.dumps(item))
+                f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)",
+                (key, cloudpickle.dumps(item)),
             )
             database.commit()
 
