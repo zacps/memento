@@ -35,13 +35,6 @@ class FileSystemCheckpointing:
         self.key = key or default_key_provider
         self._connection = connection
 
-        self._timestamp = "(julianday('now') - 2440587.5)*86400.0"
-        self._sql_select = f"SELECT value FROM {self._table_name} WHERE key = ?"
-        self._sql_insert = (
-            f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)"
-        )
-        self._sql_remove = f"DELETE FROM {self._table_name} WHERE key = ?"
-
         self._setup_database()
 
     def _setup_database(self) -> None:
@@ -53,7 +46,7 @@ class FileSystemCheckpointing:
                 f"""
                 CREATE TABLE IF NOT EXISTS {self._table_name} (
                     key BINARY PRIMARY KEY,
-                    ts REAL NOT NULL DEFAULT ({self._timestamp}),
+                    ts REAL NOT NULL DEFAULT ((julianday('now') - 2440587.5)*86400.0),
                     value BLOB NOT NULL
                 ) WITHOUT ROWID
             """
@@ -99,7 +92,7 @@ class FileSystemCheckpointing:
         :raise KeyError: When the key has not been checkpoint.
         """
         with self as database:
-            rows = database.execute(self._sql_select, (key,)).fetchall()
+            rows = database.execute(f"SELECT value FROM {self._table_name} WHERE key = ?", (key,)).fetchall()
             if rows:
                 return cloudpickle.loads(rows[0][0])[0]
 
@@ -113,7 +106,9 @@ class FileSystemCheckpointing:
         :returns: Nothing.
         """
         with self as database:
-            database.execute(self._sql_insert, (key, cloudpickle.dumps(item)))
+            database.execute(
+                f"INSERT OR REPLACE INTO {self._table_name}(key,value) VALUES(?,?)", (key, cloudpickle.dumps(item))
+            )
             database.commit()
 
     def remove(self, key: str):
@@ -123,7 +118,7 @@ class FileSystemCheckpointing:
         :returns: None
         """
         with self as database:
-            database.execute(self._sql_remove, (key,))
+            database.execute(f"DELETE FROM {self._table_name} WHERE key = ?", (key,))
             database.commit()
 
     def contains(self, key: str) -> bool:
