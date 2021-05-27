@@ -1,5 +1,9 @@
 from sklearn import datasets
-from sklearn.ensemble import AdaBoostClassifier, BaggingClassifier, RandomForestClassifier
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    BaggingClassifier,
+    RandomForestClassifier,
+)
 from sklearn.model_selection import cross_val_score
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
@@ -27,7 +31,9 @@ def run_classifiers(x, y):
     bagging_scores = cross_val_score(bagging_classifier, x, y, cv=10)
     decision_tree_scores = cross_val_score(decision_tree_classifier, x, y, cv=10)
     random_forest_scores = cross_val_score(random_forest_classifier, x, y, cv=10)
-    simple_vector_machine_scores = cross_val_score(simple_vector_machine_classifier, x, y, cv=10)
+    simple_vector_machine_scores = cross_val_score(
+        simple_vector_machine_classifier, x, y, cv=10
+    )
 
     # Output mean accuracy for each classifier
 
@@ -35,7 +41,9 @@ def run_classifiers(x, y):
     print(f"Mean accuracy of Bagging classifier: {bagging_scores.mean()}")
     print(f"Mean accuracy of Decision Tree classifier: {decision_tree_scores.mean()}")
     print(f"Mean accuracy of Random Forest classifier: {random_forest_scores.mean()}")
-    print(f"Mean accuracy of Simple Vector Machine classifier: {simple_vector_machine_scores.mean()}")
+    print(
+        f"Mean accuracy of Simple Vector Machine classifier: {simple_vector_machine_scores.mean()}"
+    )
     print()
 
 
