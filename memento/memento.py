@@ -13,7 +13,7 @@ import cloudpickle
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config
-from memento.task_interface import Context, Result
+from memento.task_interface import Context, Result, FileSystemCheckpointing
 from memento.exceptions import CacheMiss
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class Memento:
         """
         self.func = func
 
-    def run(  # pylint: disable=too-many-arguments
+    def run(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         matrix: dict,
         dry_run: bool = False,
@@ -62,30 +62,42 @@ class Memento:
             logger.info("Exiting due to dry run")
             return None
 
-        cache = FileSystemCacheProvider(
+        cache_provider = FileSystemCacheProvider(
             filepath=(
                 cache_path
                 or os.environ.get("MEMENTO_CACHE_PATH", None)
                 or "memento.sqlite"
             ),
-            key=_key,
+            key_provider=_key_provider,
+        )
+
+        checkpoint_provider = FileSystemCheckpointing(
+            filepath=(cache_path or "memento.sqlite"),
+            key=_key_provider,
         )
         manager = TaskManager()
 
         # Run tasks for which we have no cached result
         ran = []
         for config in configs:
-            key = _key(self.func, config)
-            if not cache.contains(key) or force_run:
+            key = _key_provider(self.func, config)
+            if not cache_provider.contains(key) or force_run:
                 if force_cache:
                     raise CacheMiss(config)
-                context = Context(key)
-                manager.add_task(delayed(_wrapper(self.func)(context, config, cache)))
+                context = Context(key, checkpoint_provider)
+                manager.add_task(
+                    delayed(_wrapper(self.func)(context, config, cache_provider))
+                )
                 ran.append(config)
 
         manager.run()
 
-        results = [cache.get(_key(self.func, config)) for config in configs]
+        results = [
+            cache_provider.get(_key_provider(self.func, config)) for config in configs
+        ]
+
+        for config in configs:
+            checkpoint_provider.remove(_key_provider(self.func, config))
 
         for result in results:
             if result.config in ran:
@@ -107,7 +119,9 @@ def _wrapper(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(context: Context, config: Config, cache: CacheProvider) -> Result:
+    def inner(
+        context: Context, config: Config, cache_provider: CacheProvider
+    ) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -124,13 +138,13 @@ def _wrapper(func: Callable) -> Callable:
             memory=None,
             was_cached=True,
         )
-        cache.set(context.key, result)
-
+        cache_provider.set(context.key, result)
+        context.checkpoint(result)
         return result
 
     return inner
 
 
-def _key(func: Callable, config: Config):
+def _key_provider(func: Callable, config: Config):
     # The default behaviour caches on all arguments, including the config object.
     return cloudpickle.dumps({"function": func, "args": [config]})
