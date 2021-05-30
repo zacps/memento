@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 iris_x, iris_y = datasets.load_iris(return_X_y=True)
 digits_x, digits_y = datasets.load_digits(return_X_y=True)
 wine_x, wine_y = datasets.load_wine(return_X_y=True)
+wine_y_broken = wine_y[:-1]
 breast_x, breast_y = datasets.load_breast_cancer(return_X_y=True)
 
 
@@ -54,7 +55,8 @@ print("Digits dataset\n")
 run_classifiers(digits_x, digits_y)
 
 print("Wine dataset\n")
-run_classifiers(wine_x, wine_y)
+run_classifiers(wine_x, wine_y_broken)
+#run_classifiers(wine_x, wine_y)
 
 print("Breast cancer dataset\n")
 run_classifiers(breast_x, breast_y)
