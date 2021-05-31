@@ -66,7 +66,7 @@ def _submit_job(file, config: Config, internal_id: str):
     # pass path to funcion and arguments
     slurm.sbatch(
         f"""
-        PYTHONPATH={os.getcwd()} {sys.executable} {__file__} {file.name}
+        PYTHONPATH={":".join(sys.path)} {sys.executable} {__file__} {file.name}
         """
     )
 
@@ -88,7 +88,7 @@ def _submit_check(filename: str, config: Config):
     # pass path to funcion and arguments
     slurm.sbatch(
         f"""
-        PYTHONPATH={os.getcwd()} {sys.executable} {__file__} {filename} --check={sys.environ["SLURM_JOB_ID"]}
+        PYTHONPATH={":".join(sys.path)} {sys.executable} {__file__} {filename} --check={sys.environ["SLURM_JOB_ID"]}
         """
     )
 
