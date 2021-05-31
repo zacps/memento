@@ -86,7 +86,7 @@ class Memento:
                     raise CacheMiss(config)
                 context = Context(key, checkpoint_provider)
                 manager.add_task(
-                    delayed(_wrapper(self.func)(context, config, cache_provider))
+                    delayed(_wrapper(self.func))(context, config, cache_provider)
                 )
                 ran.append(config)
 

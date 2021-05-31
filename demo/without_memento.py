@@ -48,6 +48,11 @@ def run_classifiers(x, y):
     print()
 
 
+import time
+
+t0 = time.time()
+
+
 print("Iris dataset\n")
 run_classifiers(iris_x, iris_y)
 
@@ -55,8 +60,13 @@ print("Digits dataset\n")
 run_classifiers(digits_x, digits_y)
 
 print("Wine dataset\n")
-run_classifiers(wine_x, wine_y_broken)
-#run_classifiers(wine_x, wine_y)
+# run_classifiers(wine_x, wine_y_broken)
+run_classifiers(wine_x, wine_y)
 
 print("Breast cancer dataset\n")
 run_classifiers(breast_x, breast_y)
+
+t1 = time.time()
+
+total = t1 - t0
+print(total)
