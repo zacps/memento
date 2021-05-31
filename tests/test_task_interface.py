@@ -1,12 +1,31 @@
 import time
+from sqlite3 import Connection
+from unittest.mock import Mock
+import pytest
+from memento.task_interface import Context, FileSystemCheckpointing
+import os
+import tempfile
+import cloudpickle
 
-from memento.task_interface import Context
+
+def constant_key_provider(
+    *args, **kwargs
+):  # Necessary to ensure that mocks are not pickled
+    return "key"
+
+
+def arbitrary_expensive_thing(x):
+    return x
+
+
+def arbitrary_expensive_thing2(x):
+    return x + 1
 
 
 class TestContext:
     class TestRecord:
         def test_record_records_single_value(self):
-            context = Context("key")
+            context = Context("key", FileSystemCheckpointing())
             context.record({"name": 1.0})
             context.record({"name": 2.0})
 
@@ -20,7 +39,7 @@ class TestContext:
             assert expected_y_values == actual_y_values
 
         def test_record_records_multiple_values_at_same_timestamp(self):
-            context = Context("key")
+            context = Context("key", FileSystemCheckpointing())
             context.record(value_dict={"name1": 1.0, "name2": 2.0})
 
             metrics = context.collect_metrics()
@@ -40,7 +59,7 @@ class TestContext:
             assert x_values_1 == x_values_2
 
         def test_record_records_multiple_values_at_different_timestamps(self):
-            context = Context("key")
+            context = Context("key", FileSystemCheckpointing())
             context.record({"name1": 1.0})
             time.sleep(0.001)
             context.record({"name2": 2.0})
@@ -62,7 +81,7 @@ class TestContext:
             assert x_values_1 != x_values_2
 
         def test_record_records_x_and_y_when_given_a_tuple(self):
-            context = Context("key")
+            context = Context("key", FileSystemCheckpointing())
             context.record({"name1": (1.0, 2.0)})
 
             metrics = context.collect_metrics()
@@ -76,3 +95,72 @@ class TestContext:
 
             assert expected_y_values == actual_y_values
             assert expected_x_values == actual_x_values
+
+    class TestCheckpoint:
+        def setup_method(self, method):
+            file = tempfile.NamedTemporaryFile(
+                suffix="_memento.checkpoint", delete=False
+            )
+            self._filepath = os.path.abspath(file.name)
+            file.close()
+
+        def teardown_method(self, method):
+            os.unlink(self._filepath)
+
+        def test_file_system_checkpoint_provider_checkpoint_works(self):
+            checkpoint_provider = FileSystemCheckpointing()
+            intermediate = arbitrary_expensive_thing(1)
+            context = Context("key", checkpoint_provider)
+
+            context.checkpoint(intermediate)
+
+            assert checkpoint_provider.contains("key")
+
+        def test_file_system_checkpoint_provider_restore_works(self):
+            checkpoint_provider = FileSystemCheckpointing()
+            intermediate = arbitrary_expensive_thing(1)
+            context = Context("key", checkpoint_provider)
+
+            context.checkpoint(intermediate)
+            value = context.restore()
+
+            assert value == 1
+
+        def test_file_system_checkpoint_provider_creates_correct_keys(self):
+            def function(*args):
+                return args
+
+            context_key = "key"
+            arguments = ("test1", "test2", 123, True)
+            keyword_arguments = {
+                "key1": "value1",
+                "key2": "value2",
+                "key3": 321,
+                "key4": False,
+            }
+            expected = cloudpickle.dumps(
+                {
+                    "function": function,
+                    "context_key": context_key,
+                    "args": arguments,
+                    "kwargs": keyword_arguments,
+                }
+            )
+
+            connection = Mock(spec_set=Connection)
+            checkpoint_provider = FileSystemCheckpointing(connection=connection)
+            actual = checkpoint_provider.make_key(
+                function, context_key, *arguments, **keyword_arguments
+            )
+
+            assert expected == actual
+
+        def test_file_system_checkpoint_provider_get_raises_key_error_when_key_not_in_database(
+            self,
+        ):
+            connection = Mock(spec_set=Connection)
+            connection.execute().fetchall.return_value = None
+            checkpoint_provider = FileSystemCheckpointing(connection=connection)
+
+            with pytest.raises(KeyError) as error_info:
+                checkpoint_provider.get("not_in_checkpoint")

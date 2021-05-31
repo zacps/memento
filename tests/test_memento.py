@@ -6,6 +6,14 @@ import pytest
 from memento.memento import Memento
 
 
+def expensive_thing(x):
+    return x
+
+
+def expensive_thing2(x):
+    return x + 1
+
+
 class TestMemento:
     def setup_method(self, method):
         # This is ugly, but sqlite3 doesn't seem to accept a file handle directly, so we need to
@@ -49,3 +57,22 @@ class TestMemento:
         results = memento.run(matrix, cache_path=self._filepath)
         assert [result.inner for result in results] == ["v1", "v2", "v3"]
         assert [result.was_cached for result in results] == [True, True, False]
+
+    def test_checkpointing(self):
+        def func(context, config):
+            if context.checkpoint_exist():
+                intermediate = context.restore()
+            else:
+                intermediate = expensive_thing(config.k1)
+                context.checkpoint(intermediate)
+                intermediate = expensive_thing2(config.k1)
+
+            intermediate2 = context.restore() + intermediate
+
+            return intermediate2
+
+        memento = Memento(func)
+        matrix = {"parameters": {"k1": [1, 2]}}
+        results = memento.run(matrix, cache_path=self._filepath)
+
+        assert [result.inner for result in results] == [3, 5]

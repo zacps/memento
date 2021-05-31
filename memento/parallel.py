@@ -10,6 +10,7 @@ from typing import Callable, List, TextIO, Iterable
 
 import cloudpickle
 
+from .exceptions import AggregateException
 from .notifications import DefaultNotificationProvider, NotificationProvider
 
 
@@ -103,9 +104,16 @@ class _Task:
 
 
 def _worker(task: "_Task"):
-    """ Initializer function for pool.map. """
+    """
+    Initializer function for pool.map.
+
+    Returns a tuple of (task_index, task_result, exception)
+    """
     with _redirect_stdio(f"{task.identifier}: "):
-        return task.index, task.run()
+        try:
+            return task.index, task.run(), None
+        except Exception as exception:  # pylint: disable=broad-except
+            return task.index, None, exception
 
 
 TASK_PRIORITY_LOW: int = 3
@@ -198,7 +206,10 @@ class TaskManager:
 
         self._tasks.clear()
 
-        # At this point results is a list of tuples -> (task_index, task_result) so we can sort
+        exceptions = [result[2] for result in results if result[2] is not None]
+
+        if exceptions:
+            raise AggregateException(exceptions)
 
         results.sort(key=lambda t: t[0])
         results = [cloudpickle.loads(item[1]) for item in results]
