@@ -4,13 +4,13 @@ Contains `Memento`, the main entry point of MEMENTO.
 
 import functools
 import logging
-from memento.slurm import run_slurm
 import os
 from datetime import datetime
 from typing import Callable, List, Optional
 
 import cloudpickle
 
+from memento.slurm import run_slurm
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
 from memento.configurations import configurations, Config

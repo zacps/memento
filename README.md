@@ -33,6 +33,8 @@ $ cd slurm-docker-cluster
 $ # First run only
 $ docker build -t slurm-docker-cluster:20-11-4-1 .
 $ bash ./register_cluster.sh
+$ # New version
+$ docker build -t memento-slurm -f Dockerfile.memento  ..
 
 $ docker-compose up -d
 $ docker-compose exec -w /memento slurmctld poetry run pytest -m slurm

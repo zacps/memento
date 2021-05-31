@@ -14,7 +14,7 @@ services:
       - var_lib_mysql:/var/lib/mysql
 
   slurmdbd:
-    image: slurm-docker-cluster:19.05.1
+    image: memento-slurm
     command: ["slurmdbd"]
     container_name: slurmdbd
     hostname: slurmdbd
@@ -28,10 +28,7 @@ services:
       - mysql
 
   slurmctld:
-    #image: slurm-docker-cluster:19.05.1
-    build: 
-      context: ..
-      dockerfile:  slurm-docker-cluster/Dockerfile.memento
+    image: memento-slurm
     command: ["slurmctld"]
     container_name: slurmctld
     hostname: slurmctld
@@ -48,7 +45,7 @@ services:
       - "slurmdbd"
 
   c1:
-    image: slurm-docker-cluster:19.05.1
+    image: memento-slurm
     command: ["slurmd"]
     hostname: c1
     container_name: c1
@@ -65,7 +62,7 @@ services:
       - "slurmctld"
 
   c2:
-    image: slurm-docker-cluster:19.05.1
+    image: memento-slurm
     command: ["slurmd"]
     hostname: c2
     container_name: c2

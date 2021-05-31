@@ -1,5 +1,7 @@
 FROM slurm-docker-cluster:20-11-4-1
 
+LABEL org.opencontainers.image.title="memento-slurm"
+
 RUN set -ex \
     && yum -y install \
     python36 \

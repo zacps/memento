@@ -14,11 +14,11 @@ a check job, which in turn triggers the next main job.
 """
 
 import sys
+import os
 import subprocess
 import csv
 import time
 from uuid import uuid4
-from itertools import chain
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, List
@@ -66,7 +66,7 @@ def _submit_job(file, config: Config, internal_id: str):
     # pass path to funcion and arguments
     slurm.sbatch(
         f"""
-        {sys.executable} {__file__} {file.name}
+        PYTHONPATH={os.getcwd()} {sys.executable} {__file__} {file.name}
         """
     )
 
@@ -88,7 +88,7 @@ def _submit_check(filename: str, config: Config):
     # pass path to funcion and arguments
     slurm.sbatch(
         f"""
-        {sys.executable} {__file__} {filename} --check={sys.environ["SLURM_JOB_ID"]}
+        PYTHONPATH={os.getcwd()} {sys.executable} {__file__} {filename} --check={sys.environ["SLURM_JOB_ID"]}
         """
     )
 
@@ -99,6 +99,7 @@ def __wait_jobs(ids):
     IDs are not stable. Instead we make use of the job comment field (arbitrary text) to pass an
     internal ID. This internal ID is used to determine if a task has completed.
     """
+    print(f"Checking job IDs {ids}")
     while True:
         out = subprocess.run(
             [
@@ -117,30 +118,30 @@ def __wait_jobs(ids):
         assert (
             out.returncode == 0
         ), f"FAILED to check job status with sacct: '{out.stderr}'"
-        jobs = csv.DictReader(out.stdout.splitlines(), delimiter="|")
+        jobs = list(csv.DictReader(out.stdout.splitlines(), delimiter="|"))
 
-        if all(job["STATE"] == "COMPLETED" for job in jobs):
+        if all(job["State"] == "COMPLETED" for job in jobs):
             return
 
-        seen_ids = {}
+        seen_ids = set()
         for job in jobs[::-1]:
             # Jobs are returned in order from oldest start time first.
             # This stops us from considering earlier jobs for a particular task.
             if job["Comment"] in seen_ids:
                 continue
-            seen_ids.insert(job["Comment"])
+            seen_ids.add(job["Comment"])
 
-            if job["STATE"] == "FAILED":
+            if job["State"] == "FAILED":
                 # TODO: Give the node on which the job failed
                 raise Exception(f"Job {job['JobID']} FAILED after {job['Elapsed']}")
             # State can be 'CANCELLED by ...'
-            if "CANCELLED" in job["STATE"]:
+            if "CANCELLED" in job["State"]:
                 # TODO: Give the node on which the job failed
                 raise Exception(
                     f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
                 )
             # TODO: This should be handled by the check script (expand memory allowance up to some maximum and resubmit)
-            if "OUT_OF_MEMORY" in job["STATE"]:
+            if "OUT_OF_MEMORY" in job["State"]:
                 # TODO: Give the node on which the job failed
                 raise Exception(
                     f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
