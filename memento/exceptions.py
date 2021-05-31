@@ -1,9 +1,22 @@
 """
 Exceptions raised by Memento.
 """
-
+from typing import List
 
 from memento.configurations import Config
+
+
+class AggregateException(Exception):
+    """
+    Raised when one or more exceptions are raised when running tasks.
+    """
+
+    def __init__(self, exceptions: List[Exception]) -> None:
+        message = ",\n\t".join(
+            f"{type(exception).__name__}: {str(exception)}" for exception in exceptions
+        )
+        super().__init__(f"One or more exceptions were encountered:\n\t{message}")
+        self.exceptions = exceptions
 
 
 class CacheMiss(Exception):
