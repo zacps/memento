@@ -1,4 +1,4 @@
-FROM slurm-docker-cluster:19.05.1
+FROM slurm-docker-cluster:20-11-4-1
 
 RUN set -ex \
     && yum -y install \

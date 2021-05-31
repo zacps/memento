@@ -111,8 +111,12 @@ def __wait_jobs(ids):
                 "jobid,state,elapsed,start,comment%36",
             ],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             encoding="utf-8",
         )
+        assert (
+            out.returncode == 0
+        ), f"FAILED to check job status with sacct: '{out.stderr}'"
         jobs = csv.DictReader(out.stdout.splitlines(), delimiter="|")
 
         if all(job["STATE"] == "COMPLETED" for job in jobs):

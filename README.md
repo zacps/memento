@@ -27,9 +27,13 @@ $ poetry run pytest
 
 HPC tests:
 
-```
+```bash
 $ cd slurm-docker-cluster
-$ docker build -t slurm-docker-cluster:19.05.1
+
+$ # First run only
+$ docker build -t slurm-docker-cluster:20-11-4-1 .
+$ bash ./register_cluster.sh
+
 $ docker-compose up -d
 $ docker-compose exec -w /memento slurmctld poetry run pytest -m slurm
 $ docker-compose down
