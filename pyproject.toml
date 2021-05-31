@@ -8,7 +8,6 @@ license = "MIT/Apache 2.0"
 [tool.poetry.dependencies]
 python = "^3.6"
 cloudpickle = "^1.6.0"
-scikit-learn = "^0.24.2"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
@@ -17,6 +16,7 @@ pytest = "^6.2.2"
 Sphinx = "^3.5.3"
 mypy = "^0.812"
 aiosmtpd = "^1.4.2"
+scikit-learn = "^0.24.2"
 
 [tool.pylint.miscellaneous]
 # Allow TODO notes
