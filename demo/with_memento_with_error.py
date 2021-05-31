@@ -25,15 +25,18 @@ def load_wine_broken():
 matrix = {
     "parameters": {
         "classifier": [
-            AdaBoostClassifier, BaggingClassifier, DecisionTreeClassifier, RandomForestClassifier,
-            SVC
+            AdaBoostClassifier,
+            BaggingClassifier,
+            DecisionTreeClassifier,
+            RandomForestClassifier,
+            SVC,
         ],
         "dataset": [
             functools.partial(datasets.load_iris, return_X_y=True),
             functools.partial(datasets.load_digits, return_X_y=True),
             load_wine_broken,
-            functools.partial(datasets.load_breast_cancer, return_X_y=True)
-        ]
+            functools.partial(datasets.load_breast_cancer, return_X_y=True),
+        ],
     }
 }
 
@@ -51,6 +54,6 @@ def experiment(context: Context, config: Config):
     return scores.mean()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     results = Memento(experiment).run(matrix)
     pprint([result.inner for result in results])

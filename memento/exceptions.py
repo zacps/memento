@@ -12,7 +12,9 @@ class AggregateException(Exception):
     """
 
     def __init__(self, exceptions: List[Exception]) -> None:
-        message = ',\n\t'.join(f'{type(exception).__name__}: {str(exception)}' for exception in exceptions)
+        message = ",\n\t".join(
+            f"{type(exception).__name__}: {str(exception)}" for exception in exceptions
+        )
         super().__init__(f"One or more exceptions were encountered:\n\t{message}")
         self.exceptions = exceptions
 

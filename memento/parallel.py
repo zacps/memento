@@ -112,8 +112,8 @@ def _worker(task: "_Task"):
     with _redirect_stdio(f"{task.identifier}: "):
         try:
             return task.index, task.run(), None
-        except Exception as e:
-            return task.index, None, e
+        except Exception as exception:  # pylint: disable=broad-except
+            return task.index, None, exception
 
 
 TASK_PRIORITY_LOW: int = 3
