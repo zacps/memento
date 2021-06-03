@@ -24,7 +24,7 @@ def run_classifiers(x, y):
     bagging_classifier = BaggingClassifier()
     decision_tree_classifier = DecisionTreeClassifier()
     random_forest_classifier = RandomForestClassifier()
-    simple_vector_machine_classifier = SVC()
+    support_vector_machine_classifier = SVC()
 
     # Cross validate each classifier 10 times
 
@@ -32,18 +32,18 @@ def run_classifiers(x, y):
     bagging_scores = cross_val_score(bagging_classifier, x, y, cv=10)
     decision_tree_scores = cross_val_score(decision_tree_classifier, x, y, cv=10)
     random_forest_scores = cross_val_score(random_forest_classifier, x, y, cv=10)
-    simple_vector_machine_scores = cross_val_score(
-        simple_vector_machine_classifier, x, y, cv=10
+    support_vector_machine_scores = cross_val_score(
+        support_vector_machine_classifier, x, y, cv=10
     )
 
     # Output mean accuracy for each classifier
 
-    print(f"Mean accuracy of ADA Boost classifier: {ada_boost_scores.mean()}")
-    print(f"Mean accuracy of Bagging classifier: {bagging_scores.mean()}")
-    print(f"Mean accuracy of Decision Tree classifier: {decision_tree_scores.mean()}")
-    print(f"Mean accuracy of Random Forest classifier: {random_forest_scores.mean()}")
+    print(f"Mean accuracy of ADA Boost classifier: {ada_boost_scores.mean():.0%}")
+    print(f"Mean accuracy of Bagging classifier: {bagging_scores.mean():.0%}")
+    print(f"Mean accuracy of Decision Tree classifier: {decision_tree_scores.mean():.0%}")
+    print(f"Mean accuracy of Random Forest classifier: {random_forest_scores.mean():.0%}")
     print(
-        f"Mean accuracy of Simple Vector Machine classifier: {simple_vector_machine_scores.mean()}"
+        f"Mean accuracy of Support Vector Machine classifier: {support_vector_machine_scores.mean():.0%}"
     )
     print()
 

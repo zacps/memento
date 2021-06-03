@@ -1,4 +1,5 @@
 import functools
+import itertools
 from pprint import pprint
 
 from sklearn import datasets
@@ -56,4 +57,10 @@ def experiment(context: Context, config: Config):
 
 if __name__ == "__main__":
     results = Memento(experiment).run(matrix)
-    pprint([result.inner for result in results])
+
+    key = lambda r: r.config.dataset.func.__name__
+    for dataset, group in itertools.groupby(sorted(results, key=key), key=key):
+        print(f"{dataset[5:]} dataset\n")
+        for result in group:
+            print(f"Mean accuracy of {result.config.classifier.__name__}: {result.inner:.0%}")
+        print()
