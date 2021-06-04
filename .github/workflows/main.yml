@@ -10,7 +10,7 @@ jobs:
   lint:
     strategy:
       matrix:
-        python-version: [3.6]
+        python-version: [3.7]
         os: [ubuntu-latest]
         
     runs-on: ${{ matrix.os }}
@@ -49,7 +49,7 @@ jobs:
   test:
     strategy:
       matrix:
-        python-version: [3.6, 3.9]
+        python-version: [3.7, 3.9]
         os: [ubuntu-latest, windows-latest]
         
     runs-on: ${{ matrix.os }}
@@ -80,7 +80,7 @@ jobs:
   docs:
     strategy:
       matrix:
-        python-version: [3.6]
+        python-version: [3.7]
         os: [ubuntu-latest]
         
     runs-on: ${{ matrix.os }}
