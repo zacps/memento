@@ -2,7 +2,7 @@
 MEMENTO is a Python library for running computationally expensive experiments.
 """
 
-from memento.configurations import Config, Configurations, configurations
+from memento.configurations import Config, Configurations, generate_configurations
 from memento.memento import Memento
 from memento.task_interface import FileSystemCheckpointing, Context, MemoryUsage, Result
 from memento.notifications import (
@@ -33,7 +33,7 @@ __all__ = [
     "Memento",
     "Config",
     "Configurations",
-    "configurations",
+    "generate_configurations",
     "FileSystemCheckpointing",
     "Context",
     "MemoryUsage",
