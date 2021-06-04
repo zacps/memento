@@ -10,6 +10,7 @@ from typing import Any, Callable, Optional
 import datetime
 import cloudpickle
 from memento.configurations import Config
+from memento.caching import default_key_provider
 
 
 class FileSystemCheckpointing:
@@ -256,12 +257,3 @@ class Result:
         self.cpu_time = cpu_time
         self.memory = memory
         self.was_cached = was_cached
-
-
-def default_key_provider(func: Callable, context_key: str, *args, **kwargs) -> str:
-    """
-    Default cache key function. This uses cloudpickle to hash the function and all arguments.
-    """
-    return cloudpickle.dumps(
-        {"function": func, "context_key": context_key, "args": args, "kwargs": kwargs}
-    )

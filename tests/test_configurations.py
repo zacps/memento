@@ -1,4 +1,4 @@
-from memento.configurations import configurations
+from memento.configurations import generate_configurations
 
 
 def test_configurations():
@@ -7,7 +7,7 @@ def test_configurations():
         "exclude": [{"param1": 3, "param2": 6}],
     }
 
-    configs = configurations(matrix)
+    configs = generate_configurations(matrix)
     expected = [
         {"param1": 1, "param2": 4},
         {"param1": 1, "param2": 5},

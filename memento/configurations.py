@@ -5,7 +5,7 @@ Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` typ
 import itertools
 
 
-def configurations(matrix: dict) -> "Configurations":
+def generate_configurations(matrix: dict) -> "Configurations":
     """
     Generate a list of configurations from a configuration matrix. You usually shouldn't need to
     call this directly, as it's called as part of ``Memento.run``. Of course, if you don't want

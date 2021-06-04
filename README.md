@@ -76,9 +76,9 @@ Along with a configuration matrix you need some code to run your experiments. Th
 `Callable` such as a function, lambda, class, or class method.
 
 ```python
-from memento import Memento, Config
+from memento import Memento, Config, Context
 
-def experiment(config: Config):
+def experiment(context: Context, config: Config):
   classifier = config.model()
   dataset = fetch_dataset(config.dataset)
 

@@ -63,11 +63,11 @@ class TestContext:
                 "key2": "value2",
                 "key3": 321,
                 "key4": False,
+                "context_key": context_key,
             }
             expected = cloudpickle.dumps(
                 {
                     "function": function,
-                    "context_key": context_key,
                     "args": arguments,
                     "kwargs": keyword_arguments,
                 }
@@ -76,7 +76,7 @@ class TestContext:
             connection = Mock(spec_set=Connection)
             checkpoint_provider = FileSystemCheckpointing(connection=connection)
             actual = checkpoint_provider.make_key(
-                function, context_key, *arguments, **keyword_arguments
+                function, *arguments, **keyword_arguments
             )
 
             assert expected == actual

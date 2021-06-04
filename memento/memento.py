@@ -14,7 +14,7 @@ import cloudpickle
 from memento.notifications import NotificationProvider, DefaultNotificationProvider
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
-from memento.configurations import configurations, Config
+from memento.configurations import generate_configurations, Config
 from memento.task_interface import Context, Result, FileSystemCheckpointing
 from memento.exceptions import CacheMiss, CyclicDependency
 
@@ -91,7 +91,7 @@ class Memento:
             matrix = matrices[i]
 
             if kwargs.get("dry_run"):
-                configs = configurations(matrix)
+                configs = generate_configurations(matrix)
 
                 logger.info("Running configurations for matrix '%s':", matrix["id"])
                 for config in configs:
@@ -145,7 +145,7 @@ class Memento:
         :returns: A list of results from your experiments.
         """
 
-        configs = configurations(matrix)
+        configs = generate_configurations(matrix)
 
         logger.info("Running configurations:")
         for config in configs:
