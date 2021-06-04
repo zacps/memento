@@ -11,9 +11,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from memento import Memento
-from memento.configurations import Config
-from memento.task_interface import Context
+from memento import Memento, Config, Context
 
 
 matrix = {
