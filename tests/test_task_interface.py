@@ -1,3 +1,4 @@
+import time
 from sqlite3 import Connection
 from unittest.mock import Mock
 import pytest
@@ -22,6 +23,79 @@ def arbitrary_expensive_thing2(x):
 
 
 class TestContext:
+    class TestRecord:
+        def test_record_records_single_value(self):
+            context = Context("key", FileSystemCheckpointing())
+            context.record({"name": 1.0})
+            context.record({"name": 2.0})
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name")
+
+            expected_y_values = [1.0, 2.0]
+            actual_y_values = list(metrics["name"]["y"])
+
+            assert expected_y_values == actual_y_values
+
+        def test_record_records_multiple_values_at_same_timestamp(self):
+            context = Context("key", FileSystemCheckpointing())
+            context.record(value_dict={"name1": 1.0, "name2": 2.0})
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name1")
+            assert metrics.__contains__("name2")
+
+            expected_y_values_1 = [1.0]
+            actual_y_values_1 = list(metrics["name1"]["y"])
+            expected_y_values_2 = [2.0]
+            actual_y_values_2 = list(metrics["name2"]["y"])
+            x_values_1 = list(metrics["name1"]["x"])
+            x_values_2 = list(metrics["name2"]["x"])
+
+            assert expected_y_values_1 == actual_y_values_1
+            assert expected_y_values_2 == actual_y_values_2
+            assert x_values_1 == x_values_2
+
+        def test_record_records_multiple_values_at_different_timestamps(self):
+            context = Context("key", FileSystemCheckpointing())
+            context.record({"name1": 1.0})
+            time.sleep(0.001)
+            context.record({"name2": 2.0})
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name1")
+            assert metrics.__contains__("name2")
+
+            expected_y_values_1 = [1.0]
+            actual_y_values_1 = list(metrics["name1"]["y"])
+            expected_y_values_2 = [2.0]
+            actual_y_values_2 = list(metrics["name2"]["y"])
+            x_values_1 = list(metrics["name1"]["x"])
+            x_values_2 = list(metrics["name2"]["x"])
+
+            assert expected_y_values_1 == actual_y_values_1
+            assert expected_y_values_2 == actual_y_values_2
+            assert x_values_1 != x_values_2
+
+        def test_record_records_x_and_y_when_given_a_tuple(self):
+            context = Context("key", FileSystemCheckpointing())
+            context.record({"name1": (1.0, 2.0)})
+
+            metrics = context.collect_metrics()
+
+            assert metrics.__contains__("name1")
+
+            expected_y_values = [2.0]
+            actual_y_values = list(metrics["name1"]["y"])
+            expected_x_values = [1.0]
+            actual_x_values = list(metrics["name1"]["x"])
+
+            assert expected_y_values == actual_y_values
+            assert expected_x_values == actual_x_values
+
     class TestCheckpoint:
         def setup_method(self, method):
             file = tempfile.NamedTemporaryFile(

@@ -3,14 +3,23 @@ Contains MEMENTO's task interface, once the configurations are
 generated and dispatched to tasks, we need some way to interact
 with the user code
 """
-import os
-import tempfile
-import sqlite3
-from typing import Any, Callable, Optional
 import datetime
+import os
+import sqlite3
+import tempfile
+import time
+from collections import namedtuple
+from typing import Any, Optional, Union, Tuple, Dict, List, cast
+from typing import Callable
+
 import cloudpickle
+import pandas as pd
+from pandas import DataFrame
+
 from memento.configurations import Config
 from memento.caching import default_key_provider
+
+Metric = namedtuple("Metric", "x y")
 
 
 class FileSystemCheckpointing:
@@ -153,6 +162,8 @@ class Context:
     progress reporting, and more available to tasks.
     """
 
+    _metrics: Dict[str, List[Metric]]
+
     def __init__(self, key: str, checkpoint_provider: FileSystemCheckpointing):
         """
         Each context is associated with exactly one task.
@@ -161,14 +172,57 @@ class Context:
         :param checkpoint_provider: The checkpoint provider, defaults to FileSystemCheckpointing
         """
         self.key = key
+        self._metrics = {}
         self._checkpoint_provider = checkpoint_provider
         self.checkpoint_key = None
 
-    def collect_metrics(self, *metrics: Callable):
+    def collect_metrics(self) -> Dict[str, pd.DataFrame]:
         """
-        Gets the new metrics to start next experiment
+        Collects all of the metrics as dataframes.
+        :return: A dictionary of metric names that map to Pandas Dataframes.
         """
-        raise NotImplementedError("feature: metrics")
+        metrics: Dict[str, DataFrame] = {}
+        for name in self._metrics:
+            metrics[name] = pd.DataFrame(self._metrics[name])
+
+        return metrics
+
+    def record(self, value_dict: Dict[str, Union[float, Tuple[float, float]]]) -> None:
+        """
+        Records a floating point metric in one of the following formats.
+        Default x value is a timestamp.
+        Metrics are available as part of the results object.
+
+        ..
+            context.record({"metric_name": value})
+            context.record({"metric_name": (x,y)})
+
+            # Record with the same timestamp
+            context.record({"metric_1": value1, "metric_2": value2})
+
+        :return: None.
+        :param value_dict:
+        """
+        x_value = time.time()
+
+        for name in value_dict:
+            y_value = value_dict[name]
+
+            # Handles the case of a tuple
+            if isinstance(y_value, tuple):
+                y_value = cast(Tuple[float, float], y_value)
+                x_value = y_value[0]
+                y_value = y_value[1]
+
+            # Type guards that shouldn't be triggered.
+            assert isinstance(x_value, float)
+            assert isinstance(y_value, float)
+
+            metric = Metric(x_value, y_value)
+            if self._metrics.get(name, False):
+                self._metrics[name].append(metric)
+            else:
+                self._metrics[name] = [metric]
 
     def progress(self, delta, total=None):  # pylint: disable=no-self-use
         """
@@ -223,7 +277,7 @@ class Result:
 
     inner: Any
 
-    metrics: Any
+    metrics: Dict[str, pd.DataFrame]
 
     "The start time of the task."
     start_time: datetime.datetime
@@ -242,7 +296,7 @@ class Result:
         self,
         config,
         inner,
-        metrics,
+        metrics: Dict[str, pd.DataFrame],
         start_time: datetime.datetime,
         runtime: datetime.timedelta,
         cpu_time: Optional[datetime.timedelta],
