@@ -17,6 +17,7 @@ import pandas as pd
 from pandas import DataFrame
 
 from memento.configurations import Config
+from memento.caching import default_key_provider
 
 Metric = namedtuple("Metric", "x y")
 
@@ -310,12 +311,3 @@ class Result:
         self.cpu_time = cpu_time
         self.memory = memory
         self.was_cached = was_cached
-
-
-def default_key_provider(func: Callable, context_key: str, *args, **kwargs) -> str:
-    """
-    Default cache key function. This uses cloudpickle to hash the function and all arguments.
-    """
-    return cloudpickle.dumps(
-        {"function": func, "context_key": context_key, "args": args, "kwargs": kwargs}
-    )
