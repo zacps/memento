@@ -3,7 +3,7 @@ name = "memento"
 version = "0.1.0"
 description = "A Python library for running computationally expensive experiments"
 authors = ["Zac Pullar-Strecker <zacmps@gmail.com>", "Joshua de Wet", "Liam Scott-Russell <liam.scott.russell@gmail.com>", "Feras Albaroudi", "James Lamberton <j.w.lamberton@outlook.com>", "Nipun Jasti <nipunjasti@gmail.com>"]
-license = "MIT/Apache 2.0"
+license = "BSD-2-Clause-Patent"
 
 [tool.poetry.dependencies]
 python = "^3.7"

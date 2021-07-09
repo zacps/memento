@@ -181,3 +181,7 @@ We'd like to acknowledge Joerg Wicker for supporting the project's ideation and 
 * [Joshua de Wet](https://github.com/Dewera)
 * [Nipun Jasti](https://github.com/watefeenex)
 * [James Lamberton](https://github.com/JamesLamberton)
+
+## License
+
+Memento is licensed under the [BSD+Patent](https://opensource.org/licenses/BSDplusPatent) license. This is a modified version of the [BSD](https://opensource.org/licenses/BSD-3-Clause) license which includes a patent grant.
