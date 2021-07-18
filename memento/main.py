@@ -92,7 +92,7 @@ class Memento:
             matrix = matrices[i]
 
             if kwargs.get("dry_run"):
-                configs = generate_configurations(matrix)
+                configs = configurations(matrix)
 
                 logger.info("Running configurations for matrix '%s':", matrix["id"])
                 for config in configs:
@@ -163,7 +163,7 @@ class Memento:
                 or os.environ.get("MEMENTO_CACHE_PATH", None)
                 or "memento.sqlite"
             ),
-            key=_key,
+            key_provider=_key,
         )
         manager = TaskManager(
             notification_provider=self._notification_provider,
@@ -184,7 +184,7 @@ class Memento:
                 if not cache.contains(key) or force_run:
                     if force_cache:
                         raise CacheMiss(config)
-                    context = Context(key)
+                    context = Context(key, checkpoint_provider)
                     args.append((context, config, cache))
                     ran.append(config)
 

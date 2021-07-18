@@ -3,12 +3,12 @@ Contains MEMENTO's configuration generator and ``Configuration``, ``Config`` typ
 """
 
 import itertools
-from typing import Callable, Dict, List
+from typing import Dict, List
 
 RESERVED_NAMES = ["settings", "runtime"]
 
 
-def generate_configurations(matrix: dict) -> "Configurations":
+def configurations(matrix: dict) -> "Configurations":
     """
     Generate a list of configurations from a configuration matrix. You usually shouldn't need to
     call this directly, as it's called as part of ``Memento.run``. Of course, if you don't want

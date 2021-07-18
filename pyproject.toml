@@ -25,7 +25,7 @@ scikit-learn = "^0.24.2"
 [tool.pylint.miscellaneous]
 # Allow TODO notes
 notes = "FIXME,XXX"
-disable = ["too-many-instance-attributes", "too-few-public-methods"]
+disable = ["too-many-instance-attributes", "too-few-public-methods", "invalid-name"]
 
 [tool.pytest.ini_options]
 markers = [

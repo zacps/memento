@@ -1,21 +1,23 @@
 """
 Integration with the Slurm HPC workload manager.
 
-Each task consists of two jobs. The main job starts by submitting a check job, then enters user code.
-The check job has a dependency on the main job, and restarts it if necessary. It is also in charge of
-notifying errors such as OOM that could not be caught by the main job.
+Each task consists of two jobs. The main job starts by submitting a check job, then enters user
+code. The check job has a dependency on the main job, and restarts it if necessary. It is also in
+charge of notifying errors such as OOM that could not be caught by the main job.
 
 The high level picture can be seen in the diagram below:
 
 .. graphviz:: slurm.dot
 
-Each grey box is a slurm job. The main slurm job is submitted by ``submit_main`` and goes on to trigger
-a check job, which in turn triggers the next main job.
+Each grey box is a slurm job. The main slurm job is submitted by ``submit_main`` and goes on to
+trigger a check job, which in turn triggers the next main job.
 
-Currently this implementation makes the following assumptions (and will catch fire if they are not met):
-* There is a shared filesystem at /data (FIXME: Make configurable) with read/write permissions (on login
-  and all worker nodes)
-* The current python executable is also available at the same path (and is the same version) on worker nodes.
+Currently this implementation makes the following assumptions (and will catch fire if they are not
+met):
+* There is a shared filesystem at /data (FIXME: Make configurable) with read/write permissions (on
+  login and all worker nodes)
+* The current python executable is also available at the same path (and is the same version) on
+  worker nodes.
 """
 
 import logging
@@ -29,7 +31,6 @@ from uuid import uuid4
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, List
-from operator import itemgetter
 
 import cloudpickle
 from simple_slurm import Slurm
@@ -81,7 +82,7 @@ def _submit_job(file, config: Config, internal_id: str):
     )
     # pass path to funcion and arguments
     command = f"PYTHONPATH={':'.join(sys.path)} {sys.executable} {__file__} {file.name}"
-    logger.debug(f"Scheduling job with command {command}")
+    logger.debug("Scheduling job with command %s", command)
     slurm.sbatch(command)
 
     return internal_id
@@ -94,8 +95,7 @@ def _submit_check(filename: str, config: Config):
     slurm = Slurm(
         cpus_per_task=1,
         mem_per_cpu="50M",
-        job_name=f"{config.runtime.get('jobname', 'memento')}-check"
-        or f"memento-check",
+        job_name=f"{config.runtime.get('jobname', 'memento')}-check" or "memento-check",
         dependency={"after": os.environ["SLURM_JOB_ID"]},
         # output="",
         time="0-00:01:00",
@@ -118,7 +118,7 @@ def __wait_jobs(ids):
     poll_time = backoff()
     ids = [str(_id) for _id in ids]
     while True:
-        logger.debug(f"Checking job IDs {ids}")
+        logger.debug("Checking job IDs %s", ids)
         out = subprocess.run(
             [
                 "sacct",
@@ -132,6 +132,7 @@ def __wait_jobs(ids):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
+            check=True,
         )
         assert (
             out.returncode == 0
@@ -172,7 +173,8 @@ def __wait_jobs(ids):
                 raise Exception(
                     f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
                 )
-            # TODO: This should be handled by the check script (expand memory allowance up to some maximum and resubmit)
+            # TODO: This should be handled by the check script (expand memory allowance up to some
+            # maximum and resubmit)
             if "OUT_OF_MEMORY" in job["State"]:
                 # TODO: Give the node on which the job failed
                 raise Exception(
@@ -190,6 +192,7 @@ def _run_check(file, data, job_id):
         ["sacct", "-X", "-j", job_id, "-P"],
         stdout=subprocess.PIPE,
         encoding="utf-8",
+        check=True,
     )
     jobs = csv.DictReader(out.stdout.splitlines(), delimiter="|")
     state = next(jobs)["State"]
@@ -233,14 +236,13 @@ def _entrypoint():
         _run_job(data)
 
 
-def backoff(start=1.0, max=120.0, A=0.3):
+def backoff(start=1.0, stop=120.0, A=0.3):
     """
     Backoff for slurm polling.
     """
     i = 0
     while True:
-        print(f"{min(start * math.exp(i * A), max)},")
-        yield min(start * math.exp(i * A), max)
+        yield min(start * math.exp(i * A), stop)
         i += 1
 
 
