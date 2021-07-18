@@ -234,6 +234,7 @@ class TestFileSystemCacheProvider:
 
         connection.close.assert_not_called()
 
+    @pytest.mark.slow
     def test_file_system_cache_provider_works_in_parallel(self):
         provider = FileSystemCacheProvider()
 

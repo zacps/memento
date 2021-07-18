@@ -88,7 +88,7 @@ class MemoryCacheProvider(CacheProvider):
     An in-memory cache provider. Uses a dictionary for underlying storage.
     """
 
-    def __init__(self, initial_cache: dict = None, key: Callable = None):
+    def __init__(self, initial_cache: dict = None, key_provider: Callable = None):
         """
         Creates a cache provider that uses memory for caching.
 
@@ -96,7 +96,7 @@ class MemoryCacheProvider(CacheProvider):
         """
         self._cache = initial_cache or {}
 
-        self._key = key or default_key
+        self._key_provider = key_provider or default_key_provider
 
     def __str__(self):
         return str(self._cache)
@@ -111,7 +111,7 @@ class MemoryCacheProvider(CacheProvider):
         return self._cache.get(key, False) is not False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
-        return self._key(func, *args, **kwargs)
+        return self._key_provider(func, *args, **kwargs)
 
 
 class FileSystemCacheProvider(CacheProvider):
@@ -123,7 +123,7 @@ class FileSystemCacheProvider(CacheProvider):
         self,
         connection: sqlite3.Connection = None,
         filepath: str = None,
-        key: Callable = None,
+        key_provider: Callable = None,
     ):
         """
         Creates a FileSystemCacheProvider, optionally using a DB connection or filepath.
@@ -137,11 +137,12 @@ class FileSystemCacheProvider(CacheProvider):
         )
 
         self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
+
         self._sql_select = "SELECT value FROM cache WHERE key = ?"
         self._sql_insert = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
         self._sql_debug_key_list = "SELECT key FROM cache"
 
-        self._key = key or default_key
+        self._key_provider = key_provider or default_key_provider
 
         self._setup_database()
 
@@ -210,7 +211,7 @@ class FileSystemCacheProvider(CacheProvider):
             return False
 
     def make_key(self, func: Callable, *args, **kwargs) -> str:
-        return self._key(func, *args, **kwargs)
+        return self._key_provider(func, *args, **kwargs)
 
 
 class Cache:
@@ -283,7 +284,7 @@ class Cache:
         return f"Cached function object: func: {self._func}, cache: {str(self._cache_provider)}"
 
 
-def default_key(func: Callable, *args, **kwargs) -> str:
+def default_key_provider(func: Callable, *args, **kwargs) -> str:
     """
     Default cache key function. This uses cloudpickle to hash the function and all arguments.
     """

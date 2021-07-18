@@ -3,11 +3,14 @@ name = "memento"
 version = "0.1.0"
 description = "A Python library for running computationally expensive experiments"
 authors = ["Zac Pullar-Strecker <zacmps@gmail.com>", "Joshua de Wet", "Liam Scott-Russell <liam.scott.russell@gmail.com>", "Feras Albaroudi", "James Lamberton <j.w.lamberton@outlook.com>", "Nipun Jasti <nipunjasti@gmail.com>"]
-license = "MIT/Apache 2.0"
+license = "BSD-2-Clause-Patent"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 cloudpickle = "^1.6.0"
+networkx = "^2.5.1"
+pandas = ">=0.25.0"
+pandas-stubs = "^1.1.0"
 simple-slurm = "^0.1.7"
 
 [tool.poetry.dev-dependencies]
@@ -16,6 +19,8 @@ pylint = "^2.7.2"
 pytest = "^6.2.2"
 Sphinx = "^3.5.3"
 mypy = "^0.812"
+aiosmtpd = "^1.4.2"
+scikit-learn = "^0.24.2"
 
 [tool.pylint.miscellaneous]
 # Allow TODO notes
@@ -23,7 +28,12 @@ notes = "FIXME,XXX"
 disable = ["too-many-instance-attributes", "too-few-public-methods"]
 
 [tool.pytest.ini_options]
-markers = "slurm: Test requires a slurm environment"
+markers = [
+    "slow",
+    "slurm"
+]
+log_cli=true
+log_level="NOTSET"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
