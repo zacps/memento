@@ -11,17 +11,25 @@ The high level picture can be seen in the diagram below:
 
 Each grey box is a slurm job. The main slurm job is submitted by ``submit_main`` and goes on to trigger
 a check job, which in turn triggers the next main job.
+
+Currently this implementation makes the following assumptions (and will catch fire if they are not met):
+* There is a shared filesystem at /data (FIXME: Make configurable) with read/write permissions (on login
+  and all worker nodes)
+* The current python executable is also available at the same path (and is the same version) on worker nodes.
 """
 
+import logging
 import sys
 import os
 import subprocess
 import csv
 import time
+import math
 from uuid import uuid4
 from argparse import ArgumentParser
 from tempfile import NamedTemporaryFile
 from typing import Any, Callable, List
+from operator import itemgetter
 
 import cloudpickle
 from simple_slurm import Slurm
@@ -29,7 +37,7 @@ from simple_slurm import Slurm
 from memento.configurations import Config
 
 
-JOB_POLL_TIME = 10
+logger = logging.getLogger(__name__)
 
 
 def run_slurm(func: Callable, args_list: List[List[Any]], blocking=True):
@@ -38,13 +46,19 @@ def run_slurm(func: Callable, args_list: List[List[Any]], blocking=True):
     """
 
     # pickle function and arguments to temp files
-    files = (NamedTemporaryFile("wb", delete=False) for _ in args_list)
+    # FIXME: This needs to be configurable to a directory shared between the login and
+    # compute nodes. It is used to transfer the argument data to the job.
+    # Ideally we'd autodetect the shared filesystem, but I'm not sure that's easy/possible?
+    files = (NamedTemporaryFile("wb", delete=False, dir="/data") for _ in args_list)
 
     ids = []
     for args, file in zip(args_list, files):
         config = args[1]
         internal_id = uuid4()
         cloudpickle.dump({"func": func, "args": args, "id": internal_id}, file)
+        # Required so changes are persisted before the inner jobs start. Otherwise
+        # they may only observe partial writes and fail to start.
+        file.flush()
 
         ids.append(_submit_job(file, config, internal_id))
 
@@ -61,14 +75,14 @@ def _submit_job(file, config: Config, internal_id: str):
         mem_per_cpu=config.runtime["mem_per_cpu"],
         job_name=config.runtime.get("jobname", "memento"),
         comment=internal_id,
+        # TODO: Ideally we should be able to identify the output file for each job,
+        # then we can do things like attach the output to exceptions or error messages.
         output=config.runtime["output"],  # FIXME: Default to something sensible
     )
     # pass path to funcion and arguments
-    slurm.sbatch(
-        f"""
-        PYTHONPATH={":".join(sys.path)} {sys.executable} {__file__} {file.name}
-        """
-    )
+    command = f"PYTHONPATH={':'.join(sys.path)} {sys.executable} {__file__} {file.name}"
+    logger.debug(f"Scheduling job with command {command}")
+    slurm.sbatch(command)
 
     return internal_id
 
@@ -80,16 +94,18 @@ def _submit_check(filename: str, config: Config):
     slurm = Slurm(
         cpus_per_task=1,
         mem_per_cpu="50M",
-        job_name=f"{config.runtime.job_name}-check" or f"memento-check",
-        dependency={"after": sys.environ["SLURM_JOB_ID"]},
-        output="",
+        job_name=f"{config.runtime.get('jobname', 'memento')}-check"
+        or f"memento-check",
+        dependency={"after": os.environ["SLURM_JOB_ID"]},
+        # output="",
         time="0-00:01:00",
     )
+    logger.debug("Check job batch script:\n%s", str(slurm))
     # pass path to funcion and arguments
     slurm.sbatch(
         f"""
-        PYTHONPATH={":".join(sys.path)} {sys.executable} {__file__} {filename} --check={sys.environ["SLURM_JOB_ID"]}
-        """
+        PYTHONPATH={":".join(sys.path)} {sys.executable} {__file__} {filename} --check={os.environ["SLURM_JOB_ID"]}
+        """,
     )
 
 
@@ -99,8 +115,10 @@ def __wait_jobs(ids):
     IDs are not stable. Instead we make use of the job comment field (arbitrary text) to pass an
     internal ID. This internal ID is used to determine if a task has completed.
     """
-    print(f"Checking job IDs {ids}")
+    poll_time = backoff()
+    ids = [str(_id) for _id in ids]
     while True:
+        logger.debug(f"Checking job IDs {ids}")
         out = subprocess.run(
             [
                 "sacct",
@@ -120,7 +138,21 @@ def __wait_jobs(ids):
         ), f"FAILED to check job status with sacct: '{out.stderr}'"
         jobs = list(csv.DictReader(out.stdout.splitlines(), delimiter="|"))
 
-        if all(job["State"] == "COMPLETED" for job in jobs):
+        jobs = [job for job in jobs if job["Comment"].strip() in ids]
+
+        states = {}
+        for id in ids:
+            for job in jobs:
+                if job["Comment"].strip() == id:
+                    states[id] = job["State"]
+                    break
+            else:
+                states[id] = "MEMENTO_NO_SLURM_JOB_FOUND"
+
+        logger.debug("\n".join([f"'{id}': {state}" for id, state in states.items()]))
+
+        if all(state == "COMPLETED" for state in states.values()):
+            logger.debug("All jobs completed")
             return
 
         seen_ids = set()
@@ -147,7 +179,7 @@ def __wait_jobs(ids):
                     f"Job {job['JobID']} was CANCELLED after {job['Elapsed']}"
                 )
 
-        time.sleep(JOB_POLL_TIME)
+        time.sleep(next(poll_time))
 
 
 def _run_check(file, data, job_id):
@@ -190,14 +222,26 @@ def _entrypoint():
     args = parser.parse_args()
 
     # load function and arguments
-    with open(args.file, "wb") as f:
+    with open(args.file, "rb") as f:
         data = cloudpickle.load(f)
+    os.unlink(args.file)
 
     if args.check:
         _run_check(args.file, data, args.check)
     else:
         _submit_check(args.file, data["args"][1])
         _run_job(data)
+
+
+def backoff(start=1.0, max=120.0, A=0.3):
+    """
+    Backoff for slurm polling.
+    """
+    i = 0
+    while True:
+        print(f"{min(start * math.exp(i * A), max)},")
+        yield min(start * math.exp(i * A), max)
+        i += 1
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from memento.memento import Memento
+from memento.main import Memento
 
 
 class TestMemento:

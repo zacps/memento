@@ -4,9 +4,13 @@ Contains classes for implementing caching of functions.
 import os
 import sqlite3
 import tempfile
+import logging
 from abc import ABC, abstractmethod
 from typing import Callable
 import cloudpickle
+
+
+logger = logging.getLogger(__name__)
 
 
 class CacheProvider(ABC):
@@ -135,6 +139,7 @@ class FileSystemCacheProvider(CacheProvider):
         self._sqlite_timestamp = "(julianday('now') - 2440587.5)*86400.0"
         self._sql_select = "SELECT value FROM cache WHERE key = ?"
         self._sql_insert = "INSERT OR REPLACE INTO cache(key,value) VALUES(?,?)"
+        self._sql_debug_key_list = "SELECT key FROM cache"
 
         self._key = key or default_key
 

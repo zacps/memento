@@ -2,6 +2,6 @@
 MEMENTO is a Python library for running computationally expensive experiments.
 """
 
-from memento.memento import Memento
+from memento.main import Memento
 
 __all__ = ["Memento"]
