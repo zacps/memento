@@ -1,6 +1,6 @@
 # Memento
 
-is a Python library for running computationally expensive experiments. 
+Memento is a Python library for running computationally expensive experiments. 
 
 If you need to run a large number of time-consuming experiments Memento can help:
 * Structure your configuration
@@ -154,24 +154,12 @@ Install [act](https://github.com/nektos/act), then:
 $ act
 ```
 
-## Project Proposal Document
-
-https://docs.google.com/document/d/1_Jbsl_W1Cttgn7ndZmY0vd5OfwdPE2OyH1HOZ6utj5k/edit
-
-## Final Report
-
-https://docs.google.com/document/d/1LHgcJ8xV1y9NKwHIfI8Ko6nXsZ4zmZzyRrLwXf_eTzg/edit
-
 ## Roadmap
 
-* Merge metrics support (only CI-related issues remaining)
 * Finish HPC support
+* Improve result serialisation
 * Production testing & fleshed-out integration test suite
 * Public release
-
-## Acknowledgements
-
-We'd like to acknowledge Joerg Wicker for supporting the project's ideation and development.
 
 ## Contributors
 
@@ -181,6 +169,7 @@ We'd like to acknowledge Joerg Wicker for supporting the project's ideation and 
 * [Joshua de Wet](https://github.com/Dewera)
 * [Nipun Jasti](https://github.com/watefeenex)
 * [James Lamberton](https://github.com/JamesLamberton)
+* Joerg Wicker
 
 ## License
 
