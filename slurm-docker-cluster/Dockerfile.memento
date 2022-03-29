@@ -1,0 +1,21 @@
+FROM slurm-docker-cluster:20-11-4-1
+
+LABEL org.opencontainers.image.title="memento-slurm"
+
+RUN set -ex \
+    && yum -y install \
+    python36 \
+    python36-devel \
+    python36-pip
+
+RUN pip3.6 install --upgrade pip && pip3.6 install poetry
+
+COPY . /memento
+
+VOLUME [ "/memento" ]
+
+ENV PYTHONIOENCODING=utf-8
+
+RUN pushd /memento \
+    && poetry install \
+    && popd

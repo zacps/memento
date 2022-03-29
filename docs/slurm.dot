@@ -1,0 +1,47 @@
+digraph G {
+    subgraph cluster_main {
+        style=invis;
+        subgraph cluster_main {
+            label="Main 1";
+            labeljust="l";
+            style=filled; color=lightgrey;
+            "entrypoint";
+            1 [label="run_main"];
+        }
+
+        subgraph cluster_main2 {
+            label="Main 2";
+            labeljust="l";
+            style=filled; color=lightgrey;
+            2 [label="entrypoint"];
+            3 [label="run_main"];
+        }
+
+        "..." [shape=plaintext];
+    }
+
+    subgraph cluster_check_ellipsis {
+        style=invis;
+        subgraph cluster_check {
+            label="Check 1";
+            style=filled; color=lightgrey;
+            "run_check"; "submit_check";
+        }
+
+        4 [shape=plaintext, label="..."];
+    }
+
+
+    "submit_main"->"entrypoint";
+    "entrypoint"->"submit_check";
+    "entrypoint"->1;
+    "submit_check"->"run_check";
+    "run_check"->2;
+    2->3;
+    2->4 [style=dotted]; 
+    1->2 [style=dotted]; // weight for layout
+    3->"..." [style=dotted];
+
+    // layout edges
+    "run_check" -> 4 [style=invis];
+}

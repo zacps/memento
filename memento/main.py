@@ -11,10 +11,11 @@ from networkx import DiGraph, is_directed_acyclic_graph, topological_sort  # typ
 
 import cloudpickle
 
+from memento.slurm import run_slurm
 from memento.notifications import NotificationProvider, DefaultNotificationProvider
 from memento.parallel import TaskManager, delayed
 from memento.caching import FileSystemCacheProvider, CacheProvider
-from memento.configurations import generate_configurations, Config
+from memento.configurations import configurations, Config
 from memento.task_interface import Context, Result, FileSystemCheckpointing
 from memento.exceptions import CacheMiss, CyclicDependency
 
@@ -91,7 +92,7 @@ class Memento:
             matrix = matrices[i]
 
             if kwargs.get("dry_run"):
-                configs = generate_configurations(matrix)
+                configs = configurations(matrix)
 
                 logger.info("Running configurations for matrix '%s':", matrix["id"])
                 for config in configs:
@@ -128,6 +129,7 @@ class Memento:
         force_run: bool = False,
         force_cache: bool = False,
         cache_path: str = None,
+        slurm: bool = False,  # FIXME: Autodetect if running in a HPC environment
         notify_on_complete: bool = True,
     ) -> Optional[List[Result]]:
         """
@@ -145,7 +147,7 @@ class Memento:
         :returns: A list of results from your experiments.
         """
 
-        configs = generate_configurations(matrix)
+        configs = configurations(matrix)
 
         logger.info("Running configurations:")
         for config in configs:
@@ -155,45 +157,57 @@ class Memento:
             logger.info("Exiting due to dry run")
             return None
 
-        cache_provider = FileSystemCacheProvider(
+        cache = FileSystemCacheProvider(
             filepath=(
                 cache_path
                 or os.environ.get("MEMENTO_CACHE_PATH", None)
                 or "memento.sqlite"
             ),
-            key_provider=_key_provider,
-        )
-
-        checkpoint_provider = FileSystemCheckpointing(
-            filepath=(cache_path or "memento.sqlite"),
-            key=_key_provider,
+            key_provider=_key,
         )
         manager = TaskManager(
             notification_provider=self._notification_provider,
             notify_on_complete=notify_on_complete,
         )
 
+        checkpoint_provider = FileSystemCheckpointing(
+            filepath=(cache_path or "memento.sqlite"),
+            key=_key,
+        )
+
         # Run tasks for which we have no cached result
         ran = []
+        if slurm:
+            args = []
+            for config in configs:
+                key = _key(self.func, config)
+                if not cache.contains(key) or force_run:
+                    if force_cache:
+                        raise CacheMiss(config)
+                    context = Context(key, checkpoint_provider)
+                    args.append((context, config, cache))
+                    ran.append(config)
+
+            if len(args) > 0:
+                run_slurm(_wrapper(self.func), args)
+        else:
+            for config in configs:
+                key = _key(self.func, config)
+                if not cache.contains(key) or force_run:
+                    if force_cache:
+                        raise CacheMiss(config)
+                    context = Context(key, checkpoint_provider)
+                    manager.add_task(
+                        delayed(_wrapper(self.func))(context, config, cache)
+                    )
+                    ran.append(config)
+
+            manager.run()
+
+        results = [cache.get(_key(self.func, config)) for config in configs]
+
         for config in configs:
-            key = _key_provider(self.func, config)
-            if not cache_provider.contains(key) or force_run:
-                if force_cache:
-                    raise CacheMiss(config)
-                context = Context(key, checkpoint_provider)
-                manager.add_task(
-                    delayed(_wrapper(self.func))(context, config, cache_provider)
-                )
-                ran.append(config)
-
-        manager.run()
-
-        results = [
-            cache_provider.get(_key_provider(self.func, config)) for config in configs
-        ]
-
-        for config in configs:
-            checkpoint_provider.remove(_key_provider(self.func, config))
+            checkpoint_provider.remove(_key(self.func, config))
 
         for result in results:
             if result.config in ran:
@@ -215,9 +229,7 @@ def _wrapper(func: Callable) -> Callable:
     """
 
     @functools.wraps(func)
-    def inner(
-        context: Context, config: Config, cache_provider: CacheProvider
-    ) -> Result:
+    def inner(context: Context, config: Config, cache: CacheProvider) -> Result:
         start_time = datetime.now()
 
         inner = func(context, config)
@@ -234,13 +246,13 @@ def _wrapper(func: Callable) -> Callable:
             memory=None,
             was_cached=True,
         )
-        cache_provider.set(context.key, result)
-        context.checkpoint(result)
+        cache.set(context.key, result)
+
         return result
 
     return inner
 
 
-def _key_provider(func: Callable, config: Config):
+def _key(func: Callable, config: Config):
     # The default behaviour caches on all arguments, including the config object.
     return cloudpickle.dumps({"function": func, "args": [config]})

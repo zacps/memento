@@ -123,14 +123,26 @@ $ poetry add (--dev) fancy_library
 
 ### Tests
 
+Non-HPC tests:
+
 ```
 $ poetry run pytest
 ```
 
-Alternatively to only run a subset of tests that haven't been marked as time consuming/slow you can use:
+HPC tests:
 
-```
-$ poetry run pytest -m "not slow"
+```bash
+$ cd slurm-docker-cluster
+
+$ # First run only
+$ docker build -t slurm-docker-cluster:20-11-4-1 .
+$ bash ./register_cluster.sh
+$ # New version
+$ docker build -t memento-slurm -f Dockerfile.memento  ..
+
+$ docker-compose up -d
+$ docker-compose exec -w /memento slurmctld poetry run pytest -m slurm
+$ docker-compose down
 ```
 
 ### Linters

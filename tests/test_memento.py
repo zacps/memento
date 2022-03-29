@@ -3,7 +3,7 @@ import tempfile
 
 import pytest
 
-from memento.memento import Memento
+from memento.main import Memento
 from memento.notifications import FileSystemNotificationProvider
 
 

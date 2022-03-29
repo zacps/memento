@@ -11,6 +11,7 @@ cloudpickle = "^1.6.0"
 networkx = "^2.5.1"
 pandas = ">=0.25.0"
 pandas-stubs = "^1.1.0"
+simple-slurm = "^0.1.7"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
@@ -24,11 +25,12 @@ scikit-learn = "^0.24.2"
 [tool.pylint.miscellaneous]
 # Allow TODO notes
 notes = "FIXME,XXX"
-disable = ["too-many-instance-attributes", "too-few-public-methods"]
+disable = ["too-many-instance-attributes", "too-few-public-methods", "invalid-name"]
 
 [tool.pytest.ini_options]
 markers = [
-    "slow"
+    "slow",
+    "slurm"
 ]
 log_cli=true
 log_level="NOTSET"
